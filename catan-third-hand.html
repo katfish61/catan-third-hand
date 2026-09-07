@@ -1,0 +1,2255 @@
+<title>Catan Third Hand</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=IM+Fell+English&family=Libre+Franklin:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+  :root{
+    --bg:#eef1ee; --panel:#ffffff; --panel-2:#f6f7f4; --ink:#1f2a28; --muted:#5c6b67;
+    --line:#d8dcd6; --line-strong:#c2c8c0;
+    --accent:#146b64; --accent-ink:#ffffff; --accent-soft:#dcece9;
+    --good:#3f7d3a; --warn:#c98a17; --crit:#b23b2e;
+    --sea:#9cbfc6; --token:#f2ead6; --token-ink:#2b2926; --red-num:#b23b2e; --robber:#2b2926;
+    --wood:#3f6b3a; --brick:#b3623f; --sheep:#8fae5d; --wheat:#d8a53a; --ore:#7d8a99; --desert:#d9c9a3;
+    --shadow:0 1px 2px rgba(20,30,28,.06),0 8px 24px rgba(20,30,28,.06);
+    --radius:10px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#141f1d; --panel:#1b2725; --panel-2:#202e2b; --ink:#ecefe9; --muted:#9aaaa4;
+      --line:#2c3d39; --line-strong:#3a4d48;
+      --accent:#4fbcae; --accent-ink:#0c1a18; --accent-soft:#1e3b37;
+      --good:#6bbf5f; --warn:#e0a63a; --crit:#e0685a;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141f1d; --panel:#1b2725; --panel-2:#202e2b; --ink:#ecefe9; --muted:#9aaaa4;
+    --line:#2c3d39; --line-strong:#3a4d48;
+    --accent:#4fbcae; --accent-ink:#0c1a18; --accent-soft:#1e3b37;
+    --good:#6bbf5f; --warn:#e0a63a; --crit:#e0685a;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Libre Franklin",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:14px; line-height:1.5;
+  }
+  h1,h2,h3{margin:0; text-wrap:balance}
+  button{font-family:inherit; font-size:inherit; color:inherit}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+
+  .wrap{max-width:1240px; margin:0 auto; padding:20px 20px 64px}
+  header.app{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:16px;
+    padding-bottom:14px; border-bottom:1px solid var(--line); margin-bottom:18px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:baseline; gap:12px}
+  .brand h1{
+    font-family:"IM Fell English",Georgia,"Times New Roman",serif;
+    font-weight:400; font-size:30px; letter-spacing:.2px; line-height:1;
+  }
+  .brand .tag{color:var(--muted); font-size:12.5px; letter-spacing:.03em}
+  .head-actions{display:flex; gap:8px; flex-wrap:wrap}
+
+  .btn{
+    appearance:none; border:1px solid var(--line-strong); background:var(--panel);
+    padding:7px 12px; border-radius:8px; cursor:pointer; font-weight:500;
+    transition:background .12s,border-color .12s,transform .04s;
+  }
+  .btn:hover{background:var(--panel-2)}
+  .btn:active{transform:translateY(1px)}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:4px 9px; font-size:12.5px; border-radius:7px}
+  .btn.danger{border-color:color-mix(in srgb,var(--crit) 45%,var(--line-strong)); color:var(--crit)}
+  .btn[disabled]{opacity:.42; cursor:not-allowed}
+
+  .layout{display:grid; grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr); gap:20px; align-items:start}
+  @media (max-width:940px){ .layout{grid-template-columns:1fr} }
+
+  .board-col{position:sticky; top:12px}
+  @media (max-width:940px){ .board-col{position:static} }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  .card + .card{margin-top:14px}
+  .card .hd{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:11px 14px; border-bottom:1px solid var(--line);
+  }
+  .card .hd h2{font-size:12px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  .card .bd{padding:14px}
+
+  .board-frame{padding:10px}
+  svg.board{display:block; width:100%; height:auto; border-radius:8px}
+  .legend{display:flex; flex-wrap:wrap; gap:6px 14px; padding:10px 4px 2px; font-size:11.5px; color:var(--muted)}
+  .legend .sw{display:inline-flex; align-items:center; gap:5px}
+  .legend .dot{width:10px; height:10px; border-radius:3px; border:1px solid rgba(0,0,0,.15)}
+
+  .statusbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .pill{
+    display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:999px;
+    font-size:12px; font-weight:600; border:1px solid var(--line-strong); background:var(--panel-2);
+  }
+  .pill.turn{border-color:transparent; color:#fff}
+  .phase-note{color:var(--muted); font-size:12.5px}
+
+  table.score{width:100%; border-collapse:collapse; font-size:13px}
+  table.score th,table.score td{padding:7px 8px; text-align:left; border-bottom:1px solid var(--line)}
+  table.score th{font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  table.score tr:last-child td{border-bottom:0}
+  table.score td.num{text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+  .who{display:inline-flex; align-items:center; gap:7px; font-weight:600}
+  .chip-color{width:11px; height:11px; border-radius:3px; border:1px solid rgba(0,0,0,.2); flex:none}
+  .badge{font-size:10px; font-weight:700; padding:1px 5px; border-radius:5px; letter-spacing:.04em}
+  .badge.lr{background:var(--accent-soft); color:var(--accent)}
+  .badge.la{background:color-mix(in srgb,var(--warn) 22%,var(--panel)); color:var(--warn)}
+  .badge.lead{background:color-mix(in srgb,var(--good) 20%,var(--panel)); color:var(--good)}
+
+  .locked{
+    border:1px dashed var(--line-strong); border-radius:9px; padding:12px;
+    background:repeating-linear-gradient(135deg,transparent,transparent 8px,color-mix(in srgb,var(--muted) 6%,transparent) 8px,color-mix(in srgb,var(--muted) 6%,transparent) 16px);
+  }
+  .locked .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .locked .big{font-family:"IBM Plex Mono",monospace; font-size:22px; font-weight:600}
+  .locked .sub{font-size:11.5px; color:var(--muted); margin-top:8px; display:flex; gap:6px; align-items:flex-start}
+
+  .field{display:flex; flex-direction:column; gap:5px; margin-bottom:10px}
+  .field label{font-size:11.5px; font-weight:600; letter-spacing:.03em; color:var(--muted)}
+  .field input[type=text],.field input[type=number],.field select{
+    font-family:inherit; font-size:13.5px; padding:7px 9px; border-radius:7px;
+    border:1px solid var(--line-strong); background:var(--panel); color:var(--ink);
+  }
+  .field input:focus,.field select:focus{outline:2px solid var(--accent); outline-offset:1px}
+  .inline{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+
+  .actions-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .actions-grid .btn{width:100%; justify-content:center; text-align:center}
+  .hint{font-size:12px; color:var(--muted); margin:2px 0 10px}
+
+  .res-steppers{display:grid; grid-template-columns:repeat(5,1fr); gap:6px}
+  .stepper{border:1px solid var(--line); border-radius:8px; padding:6px 4px; text-align:center}
+  .stepper .rname{font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted)}
+  .stepper .rv{font-family:"IBM Plex Mono",monospace; font-size:16px; font-weight:600; margin:2px 0}
+  .stepper .pm{display:flex; gap:4px; justify-content:center}
+  .stepper .pm button{width:22px; height:20px; border:1px solid var(--line-strong); background:var(--panel-2); border-radius:5px; cursor:pointer; line-height:1}
+  .cnt{display:inline-flex; align-items:center; gap:6px; justify-content:flex-end}
+  .cnt b{min-width:16px; text-align:center; font-family:"IBM Plex Mono",monospace}
+  .cbtn{width:22px; height:22px; border:1px solid var(--line-strong); background:var(--panel-2); color:var(--ink); border-radius:6px; cursor:pointer; line-height:1; font-size:14px; padding:0}
+  .cbtn:hover{background:var(--panel)}
+  .cbtn:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+
+  .offer{border:1px solid var(--line); border-radius:9px; padding:10px; margin-bottom:8px; background:var(--panel-2)}
+  .offer .terms{font-size:13px; margin-bottom:8px}
+  .offer .terms b{font-family:"IBM Plex Mono",monospace}
+
+  .log{max-height:280px; overflow:auto; font-size:12.5px}
+  .log .e{padding:5px 0; border-bottom:1px solid var(--line); display:flex; gap:8px}
+  .log .e:last-child{border-bottom:0}
+  .log .e .t{color:var(--muted); font-family:"IBM Plex Mono",monospace; font-size:11px; flex:none; padding-top:1px}
+  .log .e.claude{color:var(--accent)}
+  .log .e.rng{color:var(--warn)}
+  .log .e.big{font-weight:600}
+
+  .fair .h{font-family:"IBM Plex Mono",monospace; font-size:11px; word-break:break-all; color:var(--muted); background:var(--panel-2); padding:8px; border-radius:7px; border:1px solid var(--line)}
+  .fair .stat{display:flex; justify-content:space-between; font-size:12px; margin-top:8px}
+
+  .banner{
+    display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:9px;
+    background:var(--accent-soft); color:var(--accent); font-size:12.5px; font-weight:500; margin-bottom:14px;
+    border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  }
+  .banner.warn{background:color-mix(in srgb,var(--warn) 16%,var(--panel)); color:var(--warn); border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
+
+  .board-hexnum{font-family:"IBM Plex Mono",monospace; font-size:9px; fill:rgba(0,0,0,.32)}
+  .tok-num{font-family:"IBM Plex Mono",monospace; font-weight:600}
+  .pick-ring{fill:none; stroke:var(--accent); stroke-width:3.5}
+  .pick-edge{stroke:var(--accent); stroke-width:11; stroke-linecap:round; opacity:.8}
+  @media (prefers-reduced-motion:no-preference){
+    .pick-ring,.pick-edge{animation:pulse 1.3s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:.38}50%{opacity:1}}
+  }
+  .hit{cursor:pointer; fill:transparent; pointer-events:all}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .grow{flex:1}
+  details.help{margin-bottom:14px; border:1px solid var(--line); border-radius:9px; background:var(--panel)}
+  details.help summary{cursor:pointer; padding:9px 12px; font-weight:600; font-size:12.5px; list-style:none}
+  details.help summary::-webkit-details-marker{display:none}
+  details.help summary::before{content:"▸ "; color:var(--accent)}
+  details.help[open] summary::before{content:"▾ "}
+  details.help .bd{padding:0 12px 12px; font-size:12.5px; color:var(--muted)}
+  details.help .bd p{margin:8px 0}
+  .kbd{font-family:"IBM Plex Mono",monospace; font-size:11px; border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:5px; padding:1px 5px; background:var(--panel-2); color:var(--ink)}
+</style>
+
+<div class="wrap">
+  <header class="app">
+    <div class="brand">
+      <h1>Catan&nbsp;Third&nbsp;Hand</h1>
+      <span class="tag">a companion board · Claude plays the third seat</span>
+    </div>
+    <div class="head-actions">
+      <button class="btn sm ghost" id="btn-theme" title="Toggle theme">Theme</button>
+      <button class="btn sm" id="btn-export">Export save</button>
+      <button class="btn sm" id="btn-import">Import</button>
+      <button class="btn sm danger" id="btn-new">New game</button>
+      <input type="file" id="file-import" accept="application/json,.json" class="sr">
+    </div>
+  </header>
+
+  <div id="app"><p style="padding:24px;color:#888">Loading Catan Third Hand…</p></div>
+</div>
+
+<script>
+"use strict";
+window.addEventListener("error", ev=>{
+  try{
+    const a=document.getElementById("app");
+    if(a && a.dataset.ok!=="1"){
+      a.innerHTML='<pre style="white-space:pre-wrap;color:#b23b2e;background:#fff;padding:16px;border-radius:8px;font:12px/1.5 ui-monospace,monospace">Startup error:\n'+
+        String(ev.message||(ev.error&&ev.error.message)||ev.error)+'\n\n'+String((ev.error&&ev.error.stack)||'')+'</pre>';
+    }
+  }catch(e){}
+});
+/* ============================================================ CONSTANTS */
+const RES = ["wood","brick","sheep","wheat","ore"];
+const RES_META = {
+  wood:{label:"Wood",  color:"var(--wood)",  hex:"forest"},
+  brick:{label:"Brick",color:"var(--brick)", hex:"hills"},
+  sheep:{label:"Sheep",color:"var(--sheep)", hex:"pasture"},
+  wheat:{label:"Wheat",color:"var(--wheat)", hex:"fields"},
+  ore:{label:"Ore",    color:"var(--ore)",   hex:"mountains"},
+};
+const COST = {
+  road:{wood:1,brick:1},
+  settlement:{wood:1,brick:1,sheep:1,wheat:1},
+  city:{wheat:2,ore:3},
+  dev:{sheep:1,wheat:1,ore:1},
+};
+const DEV_COMPOSITION = [["knight",14],["road",2],["plenty",2],["mono",2],["vp",5]];
+const DEV_LABEL = {knight:"Knight",road:"Road Building",plenty:"Year of Plenty",mono:"Monopoly",vp:"Victory Point"};
+const PLAYER_COLORS = ["#c1352b","#2f6db0","#d98324"];
+
+/* Standard-ish base board, row-major ids 1..19, rows 3/4/5/4/3.
+   Resource counts: 4 wood, 3 brick, 4 sheep, 4 wheat, 3 ore, 1 desert.
+   Token multiset: 2,3,3,4,4,5,5,6,6,8,8,9,9,10,10,11,11,12 */
+const STANDARD_BOARD = [
+  {r:"ore",t:10},{r:"sheep",t:2},{r:"wood",t:9},
+  {r:"wheat",t:12},{r:"brick",t:6},{r:"sheep",t:4},{r:"brick",t:10},
+  {r:"wheat",t:9},{r:"wood",t:11},{r:"desert",t:0},{r:"wood",t:3},{r:"ore",t:8},
+  {r:"wood",t:8},{r:"ore",t:3},{r:"wheat",t:4},{r:"sheep",t:5},
+  {r:"brick",t:5},{r:"wheat",t:6},{r:"sheep",t:11},
+];
+const PORT_TYPES = ["3:1","wheat","3:1","ore","3:1","wood","brick","3:1","sheep"];
+
+/* Standard A–R number-token spiral (letters on the token backs).
+   Outer ring of 12 hexes, then inner ring of 6, then the centre. */
+const RING_OUTER = [1,2,3,7,12,16,19,18,17,13,8,4];
+const RING_INNER = [5,6,11,15,14,9];
+const AR_NUMBERS = [5,2,6,3,8,10,9,12,11,4,8,10,9,4,5,6,3,11]; // A..R
+function spiralOrder(startId, dir){
+  let outer=RING_OUTER.slice(), inner=RING_INNER.slice();
+  if(dir==="ccw"){ outer=[outer[0]].concat(outer.slice(1).reverse()); inner=[inner[0]].concat(inner.slice(1).reverse()); }
+  let si=outer.indexOf(startId); if(si<0) si=0;
+  outer=outer.slice(si).concat(outer.slice(0,si));
+  return outer.concat(inner,[10]);
+}
+
+const STRATEGY_PRIMER = `You are playing 3-player BASE Catan (no expansions) to 10 victory points. Play to win; do not kingmake.
+- Opening: maximize total pip count and resource diversity across your two settlements. Prioritize 6/8 tiles and covering wood+brick+wheat+sheep (expansion) or ore+wheat (city/dev engine). Take a 2:1 port only if you already produce that resource well.
+- Value ore+wheat: cities double output and fuel dev cards.
+- Buy dev cards when resource-rich and short of good build spots. Knights reposition the robber and chase Largest Army.
+- Robber: place on the highest-pip tile of whoever is closest to winning or is starving you; rob the leader or the largest hand. Don't pick a fight you can't afford.
+- Trades: never give a resource that lets someone hit 8+ VP or complete Largest Army / Longest Road. Trade true surplus for what unblocks your next build. Prefer bank/port trades over feeding an opponent when anyone is close to winning.
+- Keep your hand at 7 or fewer once 7s are live, unless you can spend down this turn.
+- Take Longest Road or Largest Army when it's cheap and moves you ahead, or to deny a winning opponent.
+- Count opponents' visible VP plus likely hidden VP dev cards before assuming you have time.
+- Prefer concrete progress (a settlement, a city, LR/LA) over hoarding cards.`;
+
+/* ---------------- tiny helpers ---------------- */
+const $ = (s,el=document)=>el.querySelector(s);
+const $$ = (s,el=document)=>[...el.querySelectorAll(s)];
+const el = (tag,attrs={},kids=[])=>{
+  const n=document.createElement(tag);
+  for(const k in attrs){
+    if(k==="class")n.className=attrs[k];
+    else if(k==="html")n.innerHTML=attrs[k];
+    else if(k==="text")n.textContent=attrs[k];
+    else if(k.startsWith("on"))n.addEventListener(k.slice(2),attrs[k]);
+    else n.setAttribute(k,attrs[k]);
+  }
+  for(const c of [].concat(kids)) if(c!=null) n.append(c.nodeType?c:document.createTextNode(c));
+  return n;
+};
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const sum = o => RES.reduce((a,k)=>a+(o?.[k]||0),0);
+const nowClock = ()=>{const d=new Date();return d.toTimeString().slice(0,5);};
+const pips = t => t? 6-Math.abs(7-t) : 0;
+
+/* mulberry32 PRNG driven by game.rng.state (uint32) */
+function rnd(){
+  game.rng.state = (game.rng.state + 0x6D2B79F5) >>> 0;
+  let t = game.rng.state;
+  t = Math.imul(t ^ (t>>>15), t | 1);
+  t ^= t + Math.imul(t ^ (t>>>7), t | 61);
+  return ((t ^ (t>>>14)) >>> 0) / 4294967296;
+}
+const rint = n => Math.floor(rnd()*n);
+function drawRandomKey(obj){ /* weighted pick of a resource key from a hand map */
+  const total = sum(obj); if(total<=0) return null;
+  let x = rint(total);
+  for(const k of RES){ x -= (obj[k]||0); if(x<0) return k; }
+  return RES.find(k=>obj[k]>0) || null;
+}
+async function sha256Hex(str){
+  try{
+    const c = self.crypto || window.crypto;
+    const buf = await c.subtle.digest("SHA-256", new TextEncoder().encode(str));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  }catch(e){ return "(hash unavailable in this browser)"; }
+}
+function randSeedHex(){
+  try{
+    const a = new Uint32Array(1); (self.crypto||window.crypto).getRandomValues(a);
+    return a[0].toString(16).padStart(8,"0");
+  }catch(e){
+    return Math.floor(Math.random()*0xffffffff).toString(16).padStart(8,"0");
+  }
+}
+
+/* ============================================================ BOARD GEOMETRY
+   Deterministic from layout constants. Vertex / edge keys are rounded pixel
+   coords so they survive save/load as long as these constants never change. */
+const LAY = {rows:[3,4,5,4,3], S:46, M:60};
+LAY.HSP = Math.sqrt(3)*LAY.S;
+LAY.VSP = 1.5*LAY.S;
+LAY.MAXW = 5*LAY.HSP;
+
+function hexCenter(id){ // id 1..19
+  let i=id-1, r=0;
+  for(const c of LAY.rows){ if(i<c) break; i-=c; r++; }
+  const c = LAY.rows[r];
+  const cx = LAY.M + LAY.MAXW/2 - (c-1)*LAY.HSP/2 + i*LAY.HSP;
+  const cy = LAY.M + LAY.S + r*LAY.VSP;
+  return {cx,cy};
+}
+function hexCorners(id){
+  const {cx,cy}=hexCenter(id); const out=[];
+  for(let k=0;k<6;k++){
+    const a=(Math.PI/180)*(-90+60*k);
+    out.push([cx+LAY.S*Math.cos(a), cy+LAY.S*Math.sin(a)]);
+  }
+  return out;
+}
+const vkey = (x,y)=> Math.round(x)+","+Math.round(y);
+
+/* Build verts / edges / adjacency + resolve ports. Attaches to game.board. */
+function buildGeometry(){
+  const verts={}, edges={};
+  for(let id=1; id<=19; id++){
+    const cs = hexCorners(id);
+    const ks = cs.map(([x,y])=>{
+      const k=vkey(x,y);
+      (verts[k] ||= {x:+k.split(",")[0], y:+k.split(",")[1], hexes:[], adjEdges:[], adj:[]});
+      if(!verts[k].hexes.includes(id)) verts[k].hexes.push(id);
+      return k;
+    });
+    for(let k=0;k<6;k++){
+      const a=ks[k], b=ks[(k+1)%6];
+      const ek=[a,b].sort().join("|");
+      (edges[ek] ||= {v:[a,b].sort(), hexes:[], mx:0,my:0});
+      if(!edges[ek].hexes.includes(id)) edges[ek].hexes.push(id);
+    }
+  }
+  for(const ek in edges){
+    const e=edges[ek];
+    e.mx=(verts[e.v[0]].x+verts[e.v[1]].x)/2;
+    e.my=(verts[e.v[0]].y+verts[e.v[1]].y)/2;
+    for(const v of e.v){
+      verts[v].adjEdges.push(ek);
+      verts[v].adj.push(e.v[0]===v? e.v[1]:e.v[0]);
+    }
+  }
+  // ordered perimeter cycle of border edges (exactly one adjacent hex)
+  const border = Object.keys(edges).filter(k=>edges[k].hexes.length===1);
+  const bset = new Set(border);
+  const perim=[]; let cur=border[0]; let prevV=null;
+  if(cur){
+    const startV = edges[cur].v[0];
+    let endV = edges[cur].v[1];
+    perim.push(cur); prevV=startV;
+    for(let guard=0; guard<border.length+4; guard++){
+      const nxt = verts[endV].adjEdges.find(k=>bset.has(k) && k!==cur);
+      if(!nxt || nxt===border[0]) break;
+      perim.push(nxt);
+      const e=edges[nxt]; const other = e.v[0]===endV? e.v[1]:e.v[0];
+      prevV=endV; endV=other; cur=nxt;
+    }
+  }
+  // bounds for viewBox
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const k in verts){ const v=verts[k]; minX=Math.min(minX,v.x); minY=Math.min(minY,v.y); maxX=Math.max(maxX,v.x); maxY=Math.max(maxY,v.y); }
+  const pad=48;
+  game.board.geom = {
+    verts, edges, perim,
+    view:{x:minX-pad, y:minY-pad, w:(maxX-minX)+pad*2, h:(maxY-minY)+pad*2, cx:(minX+maxX)/2, cy:(minY+maxY)/2},
+  };
+  resolvePorts();
+}
+function resolvePorts(){
+  const g=game.board.geom;
+  for(const p of game.board.ports){
+    const e = g.edges[p.edge];
+    p.verts = e? e.v.slice() : [];
+  }
+}
+function standardPorts(){
+  const g=game.board.geom, perim=g.perim, out=[];
+  if(!perim.length) return out;
+  const step = Math.max(2, Math.floor(perim.length/9));
+  for(let i=0;i<PORT_TYPES.length;i++){
+    const ek = perim[(i*step) % perim.length];
+    if(ek && !out.some(o=>o.edge===ek)) out.push({edge:ek, type:PORT_TYPES[i]});
+  }
+  return out;
+}
+/* description of a vertex / edge in table language */
+function vDesc(k){
+  const hs = (game.board.geom.verts[k]?.hexes||[]).map(id=>{
+    const h=game.board.hexes[id-1];
+    return h.resource==="desert" ? "desert" : `${RES_META[h.resource].label}-${h.token}`;
+  });
+  return hs.join(" · ") || k;
+}
+function eDesc(k){
+  const e=game.board.geom.edges[k]; if(!e) return k;
+  return e.v.map(vDesc).join("  ↔  ");
+}
+
+/* ============================================================ STATE */
+const SAVE_KEY = "catan-third-hand:v1";
+let game = null;      // the world
+let ui = {};          // transient view state (pick mode, open forms)
+let sampleFn = undefined;  // resolved claude.use("sample"); null once known-unavailable
+let downloadsFn = undefined;
+
+function blankPlayer(i,name,isClaude){
+  return {
+    id:"p"+(i+1), name, color:PLAYER_COLORS[i], isClaude:!!isClaude,
+    cardCount:0,              // public resource-card count (all players)
+    hand:isClaude? {wood:0,brick:0,sheep:0,wheat:0,ore:0} : null, // exact, Claude only
+    devCount:0,               // unplayed dev cards (public count)
+    devCards:isClaude? [] : null, // exact list {type,boughtTurn}, Claude only
+    knightsPlayed:0,
+    vpCards:0,                // known victory-point dev cards (Claude: real; humans: declared)
+    settlements:[], cities:[], roads:[],
+    playedDevThisTurn:false, devBoughtThisTurn:0,
+  };
+}
+function freshDevDeck(){
+  const d=[];
+  for(const [t,n] of DEV_COMPOSITION) for(let i=0;i<n;i++) d.push(t);
+  // Fisher-Yates with the game PRNG (first use of the stream)
+  for(let i=d.length-1;i>0;i--){ const j=rint(i+1); [d[i],d[j]]=[d[j],d[i]]; }
+  return d;
+}
+
+function newGame(cfg){
+  const seedHex = randSeedHex();
+  game = {
+    v:1, phase:"setup", createdAt:Date.now(), isExample:false,
+    config:{protectRounds: cfg?.protectRounds ?? 2, claudeRollsOwnDice:true},
+    players:[
+      blankPlayer(0, cfg?.names?.[0] || "Player 1", cfg?.claudeIdx===0),
+      blankPlayer(1, cfg?.names?.[1] || "Player 2", cfg?.claudeIdx===1),
+      blankPlayer(2, cfg?.names?.[2] || "Claude",   cfg?.claudeIdx==null? true : cfg?.claudeIdx===2),
+    ],
+    board:{
+      hexes: (cfg?.hexes || STANDARD_BOARD).map((h,i)=>({id:i+1, resource:h.r, token:h.t})),
+      ports: [], robberHex: (cfg?.hexes||STANDARD_BOARD).findIndex(h=>h.r==="desert")+1 || 10,
+      geom:null,
+    },
+    dev:{ seedHex, deck:[], initialOrder:[], commit:"…computing…", revealed:false },
+    rng:{ seedHex, state: parseInt(seedHex,16)>>>0, log:[] },
+    turn:1, round:1, currentIdx:0,
+    setup:{ order:["p1","p2","p3","p3","p2","p1"], step:0, lastSettlement:null, phase:"settlement", pickStarter:true },
+    lr:{holder:null,len:0}, la:{holder:null,n:0},
+    pendingRoll:null, pending:null,
+    log:[], winner:null,
+  };
+  buildGeometry();
+  game.board.ports = (cfg?.ports==="none") ? [] : standardPorts();
+  resolvePorts();
+  game.dev.initialOrder = freshDevDeck();
+  game.dev.deck = game.dev.initialOrder.slice();
+  sealDeck();
+  logLine("New game started. 7s are disabled for the first "+game.config.protectRounds+" round(s).","big");
+  ui = {};
+}
+async function sealDeck(){
+  game.dev.commit = await sha256Hex(game.dev.seedHex + "|" + game.dev.initialOrder.join(","));
+  renderFairness();
+  save();
+}
+
+function seedExampleGame(){
+  newGame({names:["You","Sam","Claude"], claudeIdx:2});
+  game.isExample = true;
+  game.phase = "play"; game.turn = 6; game.round = 3; game.currentIdx = 0;
+  game.setup.step = 6;
+  const g=game.board.geom;
+  const vs = Object.keys(g.verts);
+  const pickV = pref => vs.find(k => vDesc(k).includes(pref)) || vs[0];
+  const P = game.players;
+  const place = (pi, vertPref, roadCount) => {
+    const v = pickV(vertPref);
+    P[pi].settlements.push(v);
+    let placed=0;
+    for(const ek of g.verts[v].adjEdges){ if(placed>=roadCount) break; if(!occupiedEdge(ek)){ P[pi].roads.push(ek); placed++; } }
+  };
+  place(0,"Wheat-6",2); place(0,"Ore-8",1);
+  place(1,"Sheep-5",2); place(1,"Wood-11",1);
+  place(2,"Brick-6",2); place(2,"Wheat-9",1);
+  // upgrade one of yours to a city
+  if(P[0].settlements[1]){ P[0].cities.push(P[0].settlements[1]); P[0].settlements.splice(1,1); }
+  P[0].cardCount=3; P[1].cardCount=5; P[2].cardCount=4;
+  P[2].hand={wood:1,brick:1,sheep:0,wheat:1,ore:1};
+  P[2].devCards=[{type:"vp",boughtTurn:4}]; P[2].devCount=1;
+  P[1].devCount=1; P[1].knightsPlayed=1;
+  game.board.robberHex = 12;
+  game.dev.deck = game.dev.initialOrder.slice(3);
+  recomputeAll();
+  game.log = [
+    le("Setup complete — snake order placements done."),
+    le("Sam played a Knight, moved the robber to Ore-8, stole 1 from You.","claude"),
+    le("Turn 5 · You rolled 9 — You +1 wheat, Sam +2 sheep."),
+    le("You upgraded a settlement to a city at "+vDesc(P[0].cities[0])+"."),
+    le("Claude rolled 6 — Claude +1 brick, You +1 wheat.","claude"),
+    le("Claude built a road and bought a development card.","claude"),
+    le("Example game — press New game to start your own.","big"),
+  ];
+  commit();
+}
+const le = (text,cls="")=>({ts:nowClock(),text,cls});
+function logLine(text,cls=""){ game.log.push(le(text,cls)); }
+
+/* ---- persistence ---- */
+function save(){
+  try{
+    if(!game || game.phase==="config") return;
+    const c = clone(game);
+    if(c.board) c.board.geom = null;           // geometry is derived
+    localStorage.setItem(SAVE_KEY, JSON.stringify(c));
+  }catch(e){}
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY); if(!raw) return false;
+    const c = JSON.parse(raw); if(!c || !c.board) return false;
+    game = c; ui = {};
+    buildGeometry();
+    resolvePorts();
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ---- commit: mutate → persist → render ---- */
+function commit(){ save(); render(); }
+function recomputeAll(){ updateLongestRoad(); updateLargestArmy(); }
+
+/* ============================================================ RULES */
+const P = () => game.players;
+const cur = () => game.players[game.currentIdx];
+function playerById(id){ return game.players.find(p=>p.id===id); }
+function allBuildings(){ // vertexKey -> {pid,kind}
+  const m={};
+  for(const p of game.players){
+    for(const v of p.settlements) m[v]={pid:p.id,kind:"settlement"};
+    for(const v of p.cities) m[v]={pid:p.id,kind:"city"};
+  }
+  return m;
+}
+function occupiedVertex(k){ const b=allBuildings(); return !!b[k]; }
+function vertexOwner(k){ return allBuildings()[k]||null; }
+function occupiedEdge(k){ for(const p of game.players) if(p.roads.includes(k)) return p.id; return null; }
+function edgeOwner(k){ return occupiedEdge(k); }
+
+function legalSettlementVertices(pid,{setup=false}={}){
+  const g=game.board.geom, b=allBuildings(), out=[];
+  for(const k in g.verts){
+    if(b[k]) continue;
+    if(g.verts[k].adj.some(n=>b[n])) continue;      // distance rule
+    if(!setup){
+      const touches = g.verts[k].adjEdges.some(ek=>game.players.find(p=>p.id===pid).roads.includes(ek));
+      if(!touches) continue;
+    }
+    out.push(k);
+  }
+  return out;
+}
+function legalRoadEdges(pid,{setup=false,fromVertex=null}={}){
+  const g=game.board.geom, b=allBuildings(), me=playerById(pid), out=[];
+  for(const ek in g.edges){
+    if(occupiedEdge(ek)) continue;
+    if(setup){
+      if(fromVertex && g.edges[ek].v.includes(fromVertex)) out.push(ek);
+      continue;
+    }
+    let ok=false;
+    for(const v of g.edges[ek].v){
+      const own=b[v];
+      if(own && own.pid===pid){ ok=true; break; }
+      if(own && own.pid!==pid) continue;             // can't extend past an opponent building
+      if(g.verts[v].adjEdges.some(x=>x!==ek && me.roads.includes(x))){ ok=true; break; }
+    }
+    if(ok) out.push(ek);
+  }
+  return out;
+}
+function legalCityVertices(pid){ return playerById(pid).settlements.slice(); }
+
+function canAfford(p,cost){ return RES.every(r=>(p.isClaude? p.hand[r] : p.cardCount>=0) && (!p.isClaude || p.hand[r]>=(cost[r]||0))); }
+function canAffordCount(p,cost){ return sum(cost) <= p.cardCount; } // humans: only count is known
+function payCost(p,cost,label){
+  if(p.isClaude){ for(const r of RES) p.hand[r]-=(cost[r]||0); }
+  p.cardCount -= sum(cost);
+}
+function gainRes(p,map){
+  if(p.isClaude){ for(const r of RES) p.hand[r]+=(map[r]||0); }
+  p.cardCount += sum(map);
+}
+function costStr(cost){ return RES.filter(r=>cost[r]).map(r=>`${cost[r]}×${RES_META[r].label}`).join(" + "); }
+
+/* production for a dice roll — returns {pid:{res:qty}} and applies it */
+function applyProduction(roll){
+  const gain={};
+  game.players.forEach(p=>gain[p.id]={});
+  const b=allBuildings();
+  game.board.hexes.forEach(h=>{
+    if(h.token!==roll) return;
+    if(h.id===game.board.robberHex) return;
+    if(h.resource==="desert") return;
+    for(const k in game.board.geom.verts){
+      if(!game.board.geom.verts[k].hexes.includes(h.id)) continue;
+      const own=b[k]; if(!own) continue;
+      const n = own.kind==="city"?2:1;
+      gain[own.pid][h.resource]=(gain[own.pid][h.resource]||0)+n;
+    }
+  });
+  game.players.forEach(p=>{ if(sum(gain[p.id])) gainRes(p,gain[p.id]); });
+  return gain;
+}
+function gainSummary(gain){
+  return game.players.map(p=>{
+    const parts=RES.filter(r=>gain[p.id][r]).map(r=>`${gain[p.id][r]} ${RES_META[r].label.toLowerCase()}`);
+    return parts.length? `${p.name} +${parts.join(", +")}` : null;
+  }).filter(Boolean).join(" · ") || "no production";
+}
+
+/* ---- longest road (DFS over a player's road edges, blocked at opponent buildings) ---- */
+function longestRoad(pid){
+  const g=game.board.geom, me=playerById(pid);
+  const roadSet=new Set(me.roads);
+  const b=allBuildings();
+  const blocked=new Set();
+  for(const k in b) if(b[k].pid!==pid) blocked.add(k);
+  let best=0;
+  function dfs(edge, fromV, visited){
+    if(visited.size>best) best=visited.size;
+    const ends=g.edges[edge].v;
+    for(const v of ends){
+      if(v===fromV) continue;
+      if(blocked.has(v)) continue;
+      for(const nb of g.verts[v].adjEdges){
+        if(nb===edge || !roadSet.has(nb) || visited.has(nb)) continue;
+        visited.add(nb); dfs(nb, v, visited); visited.delete(nb);
+      }
+    }
+  }
+  for(const e of roadSet){ const vis=new Set([e]); dfs(e,null,vis); }
+  return best;
+}
+function updateLongestRoad(){
+  const lens={}; game.players.forEach(p=>lens[p.id]=longestRoad(p.id));
+  const elig = game.players.filter(p=>lens[p.id]>=5);
+  const prev = game.lr.holder;
+  let holder=null;
+  if(elig.length){
+    const max=Math.max(...elig.map(p=>lens[p.id]));
+    const top=elig.filter(p=>lens[p.id]===max);
+    if(prev && top.some(p=>p.id===prev)) holder=prev;
+    else if(top.length===1) holder=top[0].id;
+    else holder = prev && lens[prev]>=5 ? prev : null;
+  }
+  game.lr={holder, len:holder?lens[holder]:0, lens};
+  if(holder!==prev){
+    if(holder) logLine(`Longest Road → ${playerById(holder).name} (${lens[holder]}).`);
+    else if(prev) logLine(`Longest Road is now unclaimed.`);
+  }
+}
+function updateLargestArmy(){
+  const prev=game.la.holder;
+  const elig=game.players.filter(p=>p.knightsPlayed>=3);
+  let holder=prev;
+  if(!elig.length) holder=null;
+  else{
+    const max=Math.max(...elig.map(p=>p.knightsPlayed));
+    const top=elig.filter(p=>p.knightsPlayed===max);
+    if(prev && top.some(p=>p.id===prev)) holder=prev;
+    else if(top.length===1) holder=top[0].id;
+  }
+  game.la={holder, n:holder?playerById(holder).knightsPlayed:0};
+  if(holder!==prev && holder) logLine(`Largest Army → ${playerById(holder).name} (${game.la.n} knights).`);
+}
+function publicVP(p){
+  return p.settlements.length + p.cities.length*2
+    + (game.lr.holder===p.id?2:0) + (game.la.holder===p.id?2:0)
+    + (p.isClaude?0:p.vpCards); // humans' declared VP cards shown; Claude's stay hidden in the UI
+}
+function trueVP(p){
+  return p.settlements.length + p.cities.length*2
+    + (game.lr.holder===p.id?2:0) + (game.la.holder===p.id?2:0) + p.vpCards;
+}
+function portRatesFor(pid){
+  const me=playerById(pid);
+  const owned=new Set([...me.settlements,...me.cities]);
+  const rates={}; RES.forEach(r=>rates[r]=4);
+  for(const p of game.board.ports){
+    if(!p.verts.some(v=>owned.has(v))) continue;
+    if(p.type==="3:1"){ RES.forEach(r=>rates[r]=Math.min(rates[r],3)); }
+    else rates[p.type]=Math.min(rates[p.type],2);
+  }
+  return rates;
+}
+function checkWinFor(p){
+  if(trueVP(p)>=10){
+    game.winner=p.id; game.phase="over";
+    if(p.isClaude && p.vpCards>0) logLine(`Claude reveals ${p.vpCards} Victory Point card(s).`,"claude");
+    logLine(`${p.name} wins with ${trueVP(p)} victory points! 🏆`,"big");
+    return true;
+  }
+  return false;
+}
+
+/* ============================================================ RENDER */
+function render(){
+  const root=$("#app");
+  if(!root) return;
+  root.dataset.ok="1";
+  if(!game){ root.innerHTML="<p>Loading…</p>"; return; }
+  if(game.phase==="config"){ root.innerHTML=renderConfig(); wireConfig(); return; }
+  root.innerHTML = `
+    ${ui.importErr? `<div class="banner warn">${esc(ui.importErr)} <button class="btn sm ghost" data-act="dismiss-import">Dismiss</button></div>`:""}
+    ${game.isExample? `<div class="banner">Example game in progress — the numbers below are a sample. Press <b>&nbsp;New game&nbsp;</b> to start your own.</div>`:""}
+    ${sampleFn===null? `<div class="banner warn">Claude's decision-making is unavailable in this view. Open this artifact from claude.ai to let Claude play its turns; the tracker still works for a fully manual game.</div>`:""}
+    ${helpBlock()}
+    <div class="layout">
+      <div class="board-col">
+        <div class="card"><div class="bd board-frame">
+          ${renderBoard()}
+          ${renderLegend()}
+        </div></div>
+      </div>
+      <div class="panel-col">
+        <div class="card"><div class="bd" id="p-status">${renderStatus()}</div></div>
+        <div class="card">
+          <div class="hd"><h2>Scoreboard</h2><span class="phase-note">first to 10 wins</span></div>
+          <div class="bd" id="p-score">${renderScore()}</div>
+        </div>
+        <div class="card">
+          <div class="hd"><h2>Claude · sealed hand</h2><span class="phase-note">🔒 hidden</span></div>
+          <div class="bd" id="p-hand">${renderClaudeHand()}</div>
+        </div>
+        <div class="card">
+          <div class="hd"><h2>${game.phase==="setup"?"Setup":game.phase==="over"?"Game over":"This turn"}</h2></div>
+          <div class="bd" id="p-action">${renderAction()}</div>
+        </div>
+        <div class="card">
+          <div class="hd"><h2>Fairness</h2></div>
+          <div class="bd fair" id="p-fair">${renderFairnessInner()}</div>
+        </div>
+        <div class="card">
+          <div class="hd"><h2>Game log</h2></div>
+          <div class="bd"><div class="log" id="p-log">${renderLog()}</div></div>
+        </div>
+      </div>
+    </div>`;
+  wireBoard();
+  wirePanels();
+  const lg=$("#p-log"); if(lg) lg.scrollTop=lg.scrollHeight;
+  if(!ui.busy) setTimeout(robberAutopilot,0);
+}
+
+function helpBlock(){
+  return `<details class="help"><summary>How the hidden information works</summary><div class="bd">
+    <p><b>Claude's resource hand and development cards live only in this browser tab</b> and are never drawn on screen — the scoreboard shows the same public card counts everyone can see across a real table. When it's Claude's turn the full hidden hand is sent to Claude privately to decide the move.</p>
+    <p><b>Everyone else keeps their physical cards.</b> The app tracks only your public card counts (tap a count to correct it). Human development cards come from your physical deck as normal.</p>
+    <p><b>Randomness is seeded and sealed.</b> The dev deck Claude draws from was shuffled once at game start; its SHA-256 fingerprint is shown now and the seed + order are revealed at the end so you can verify nothing was reordered. Dice Claude rolls, robber steals and 7-discards all come from the same seed and are written to the log.</p>
+    <p>One etiquette note: when Claude robs a human, that human taps which resource was taken so it enters Claude's hidden hand — the other human looks away for that one tap.</p>
+  </div></details>`;
+}
+
+/* ---------------- BOARD SVG ---------------- */
+function renderBoard(){
+  const g=game.board.geom, v=g.view;
+  const HEXFILL={forest:"#3f6b3a",hills:"#b3623f",pasture:"#8fae5d",fields:"#d8a53a",mountains:"#7d8a99",desert:"#d9c9a3"};
+  let s=`<svg class="board" viewBox="${v.x} ${v.y} ${v.w} ${v.h}" role="img" aria-label="Catan board">`;
+  s+=`<rect x="${v.x}" y="${v.y}" width="${v.w}" height="${v.h}" rx="14" fill="var(--sea)"></rect>`;
+  // hexes
+  for(let id=1;id<=19;id++){
+    const h=game.board.hexes[id-1];
+    const pts=hexCorners(id).map(p=>p.map(n=>n.toFixed(1)).join(",")).join(" ");
+    const {cx,cy}=hexCenter(id);
+    s+=`<polygon points="${pts}" fill="${HEXFILL[RES_META[h.resource]?.hex]||HEXFILL.desert}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"></polygon>`;
+    s+=`<text class="board-hexnum" x="${(cx).toFixed(1)}" y="${(cy-LAY.S+11).toFixed(1)}" text-anchor="middle">${id}</text>`;
+    if(h.token){
+      const red = h.token===6||h.token===8;
+      s+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="15" fill="var(--token)" stroke="rgba(0,0,0,.2)"></circle>`;
+      s+=`<text class="tok-num" x="${cx.toFixed(1)}" y="${(cy+1).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="15" fill="${red?"var(--red-num)":"var(--token-ink)"}">${h.token}</text>`;
+      const np=pips(h.token), pw=(np-1)*3;
+      for(let i=0;i<np;i++) s+=`<circle cx="${(cx-pw/2+i*3).toFixed(1)}" cy="${(cy+9).toFixed(1)}" r="1.1" fill="${red?"var(--red-num)":"var(--token-ink)"}"></circle>`;
+    }
+    if(id===game.board.robberHex){
+      s+=`<circle cx="${(cx+13).toFixed(1)}" cy="${(cy-13).toFixed(1)}" r="9" fill="var(--robber)" stroke="#fff" stroke-width="1.5"></circle>`;
+    }
+  }
+  // ports
+  for(const p of game.board.ports){
+    const e=g.edges[p.edge]; if(!e) continue;
+    const dx=e.mx-v.cx, dy=e.my-v.cy, L=Math.hypot(dx,dy)||1;
+    const ox=e.mx+dx/L*22, oy=e.my+dy/L*22;
+    for(const vk of e.v){ const vv=g.verts[vk]; s+=`<line x1="${vv.x}" y1="${vv.y}" x2="${ox.toFixed(1)}" y2="${oy.toFixed(1)}" stroke="rgba(255,255,255,.7)" stroke-width="2"></line>`; }
+    s+=`<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="10" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"></circle>`;
+    s+=`<text x="${ox.toFixed(1)}" y="${(oy+3).toFixed(1)}" text-anchor="middle" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--ink)">${p.type==="3:1"?"3:1":p.type.slice(0,2)}</text>`;
+  }
+  // roads
+  for(const pl of game.players) for(const ek of pl.roads){
+    const e=g.edges[ek]; if(!e) continue;
+    const a=g.verts[e.v[0]], b=g.verts[e.v[1]];
+    const ax=a.x+(b.x-a.x)*0.14, ay=a.y+(b.y-a.y)*0.14, bx=b.x+(a.x-b.x)*0.14, by=b.y+(a.y-b.y)*0.14;
+    s+=`<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${pl.color}" stroke-width="7" stroke-linecap="round"></line>`;
+  }
+  // buildings
+  const b=allBuildings();
+  for(const k in b){
+    const vv=g.verts[k]; const pl=playerById(b[k].pid);
+    if(b[k].kind==="city")
+      s+=`<rect x="${(vv.x-8).toFixed(1)}" y="${(vv.y-8).toFixed(1)}" width="16" height="16" rx="3" fill="${pl.color}" stroke="#fff" stroke-width="1.5"></rect><circle cx="${vv.x}" cy="${vv.y}" r="2.5" fill="#fff"></circle>`;
+    else
+      s+=`<circle cx="${vv.x}" cy="${vv.y}" r="6.5" fill="${pl.color}" stroke="#fff" stroke-width="1.5"></circle>`;
+  }
+  // pick-mode overlays
+  if(ui.pick){
+    const {mode,keys}=ui.pick;
+    if(mode==="hex"){
+      for(const id of keys){ const {cx,cy}=hexCenter(id);
+        const pts=hexCorners(id).map(p=>p.map(n=>n.toFixed(1)).join(",")).join(" ");
+        s+=`<polygon points="${pts}" class="pick-ring" fill="var(--accent)" fill-opacity="0.14"></polygon>`;
+        s+=`<polygon class="hit" data-kind="hex" data-key="${id}" points="${pts}"></polygon>`;
+      }
+    } else if(mode==="edge"){
+      for(const ek of keys){ const e=g.edges[ek]; if(!e)continue;
+        const a=g.verts[e.v[0]],c=g.verts[e.v[1]];
+        s+=`<line class="pick-edge" x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}"></line>`;
+        s+=`<line class="hit" data-kind="edge" data-key="${ek}" x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}" stroke="rgba(0,0,0,0.001)" stroke-width="24" stroke-linecap="round"></line>`;
+      }
+    } else if(mode==="vertex"){
+      for(const vk of keys){ const vv=g.verts[vk]; if(!vv)continue;
+        s+=`<circle class="pick-ring" cx="${vv.x}" cy="${vv.y}" r="10"></circle>`;
+        s+=`<circle class="hit" data-kind="vertex" data-key="${vk}" cx="${vv.x}" cy="${vv.y}" r="16"></circle>`;
+      }
+    }
+  }
+  s+=`</svg>`;
+  return s;
+}
+function renderLegend(){
+  const sw=(c,t)=>`<span class="sw"><span class="dot" style="background:${c}"></span>${t}</span>`;
+  return `<div class="legend">
+    ${sw("#3f6b3a","Wood")}${sw("#b3623f","Brick")}${sw("#8fae5d","Sheep")}${sw("#d8a53a","Wheat")}${sw("#7d8a99","Ore")}${sw("#d9c9a3","Desert")}
+    <span class="sw">● settlement</span><span class="sw">▧ city</span><span class="sw">⬤ robber</span>
+    ${game.players.map(p=>`<span class="sw"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.isClaude?" (Claude)":""}</span>`).join("")}
+  </div>`;
+}
+
+function renderStatus(){
+  const c=cur();
+  if(game.phase==="over"){
+    const w=playerById(game.winner);
+    return `<div class="statusbar"><span class="pill turn" style="background:${w.color}">🏆 ${esc(w.name)} wins</span>
+      <span class="phase-note">Final: ${game.players.map(p=>esc(p.name)+" "+trueVP(p)).join(" · ")}</span></div>`;
+  }
+  if(game.phase==="setup"){
+    if(game.setup.pickStarter){
+      return `<div class="statusbar"><span class="pill">Setup</span><span class="phase-note">Choose who places first</span></div>`;
+    }
+    const pid=game.setup.order[game.setup.step];
+    const sp=playerById(pid);
+    return `<div class="statusbar">
+      <span class="pill turn" style="background:${sp.color}">${esc(sp.name)}</span>
+      <span class="pill">Setup ${game.setup.step+1} / 6</span>
+      <span class="phase-note">Place ${game.setup.phase==="settlement"?"a settlement":"a road"}${game.setup.step>=3?" · second placements grant starting resources":""}</span>
+    </div>`;
+  }
+  return `<div class="statusbar">
+    <span class="pill turn" style="background:${c.color}">${esc(c.name)}${c.isClaude?" · Claude":""}</span>
+    <span class="pill">Turn ${game.turn}</span>
+    <span class="pill">Round ${game.round}</span>
+    ${game.round<=game.config.protectRounds? `<span class="pill" style="border-color:var(--warn);color:var(--warn)">7s off</span>`:""}
+    ${game.pendingRoll!=null? `<span class="pill mono">rolled ${game.pendingRoll}</span>`:""}
+  </div>`;
+}
+
+function renderScore(){
+  const rows=game.players.map(p=>{
+    const badges=[];
+    if(game.lr.holder===p.id) badges.push(`<span class="badge lr">LR ${game.lr.len}</span>`);
+    if(game.la.holder===p.id) badges.push(`<span class="badge la">LA ${game.la.n}</span>`);
+    const lead = Math.max(...game.players.map(publicVP))===publicVP(p) && publicVP(p)>0;
+    return `<tr>
+      <td><span class="who"><span class="chip-color" style="background:${p.color}"></span>${esc(p.name)}${p.isClaude?" 🔒":""}</span>
+        ${badges.join(" ")} ${lead?`<span class="badge lead">lead</span>`:""}</td>
+      <td class="num" title="public victory points">${publicVP(p)}</td>
+      <td class="num" title="resource cards">${p.isClaude
+        ? p.cardCount
+        : `<span class="cnt"><button class="cbtn" data-act="cadj:${p.id}:-1" aria-label="one fewer card">−</button><b>${p.cardCount}</b><button class="cbtn" data-act="cadj:${p.id}:1" aria-label="one more card">+</button></span>`}</td>
+      <td class="num" title="dev cards (unplayed)">${p.devCount}</td>
+      <td class="num" title="knights played">${p.knightsPlayed}</td>
+    </tr>`;
+  }).join("");
+  return `<table class="score"><thead><tr><th>Player</th><th class="num">VP</th><th class="num">Cards</th><th class="num">Dev</th><th class="num">Kn</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="hint" style="margin-top:8px">VP shown is public — Claude's Victory-Point dev cards stay hidden until they'd win. Use −/+ to keep each human card count matching the real hand.</div>`;
+}
+
+function renderClaudeHand(){
+  const c=game.players.find(p=>p.isClaude);
+  const playable=(c.devCards||[]).filter(d=>d.type!=="vp" && d.boughtTurn<game.turn).length;
+  return `<div class="locked">
+    <div class="row"><span>Resource cards</span><span class="big">${sum(c.hand)}</span></div>
+    <div class="row" style="margin-top:6px"><span>Development cards</span><span class="big">${(c.devCards||[]).length}</span></div>
+    <div class="sub">↳ ${playable} playable now · ${c.vpCards} hidden VP · contents are sent to Claude only, never shown here.</div>
+  </div>`;
+}
+
+function renderFairnessInner(){
+  const d=game.dev;
+  return `<div class="h">dev deck fingerprint · SHA-256<br>${esc(d.commit)}</div>
+    <div class="stat"><span>Random events logged</span><span class="mono">${game.rng.log.length}</span></div>
+    <div class="stat"><span>Cards left in Claude's dev deck</span><span class="mono">${d.deck.length}</span></div>
+    ${(game.phase==="over"||d.revealed)? `
+      <div class="h" style="margin-top:8px">seed ${esc(d.seedHex)}<br>order: ${d.initialOrder.map(t=>({knight:"Kn",road:"RB",plenty:"YoP",mono:"Mo",vp:"VP"}[t])).join(" ")}</div>`
+      : `<button class="btn sm ghost" data-act="reveal-deck" style="margin-top:8px">Reveal seed &amp; deck order</button>`}`;
+}
+function renderFairness(){ const n=$("#p-fair"); if(n) n.innerHTML=renderFairnessInner(); }
+
+function renderLog(){
+  return game.log.slice(-140).map(e=>`<div class="e ${e.cls||""}"><span class="t">${e.ts}</span><span>${esc(e.text)}</span></div>`).join("");
+}
+
+/* ---------------- steppers ---------------- */
+function steppers(ctx, vals, {min=0,max=20,only=RES}={}){
+  return `<div class="res-steppers" data-steppers="${ctx}">` + only.map(r=>`
+    <div class="stepper">
+      <div class="rname" style="color:${RES_META[r].color}">${RES_META[r].label}</div>
+      <div class="rv" data-rv="${r}">${vals[r]||0}</div>
+      <div class="pm"><button data-step="${r}:-1" aria-label="less ${r}">−</button><button data-step="${r}:1" aria-label="more ${r}">+</button></div>
+    </div>`).join("") + `</div>`;
+}
+function draft(ctx){
+  ui.drafts = ui.drafts || {};
+  ui.drafts[ctx] = ui.drafts[ctx] || {wood:0,brick:0,sheep:0,wheat:0,ore:0};
+  return ui.drafts[ctx];
+}
+function clearDrafts(){ ui.drafts={}; }
+
+/* ---------------- ACTION PANEL ---------------- */
+function renderAction(){
+  if(game.phase==="over"){
+    return `<p>${esc(playerById(game.winner).name)} has reached 10 victory points.</p>
+      <button class="btn primary" data-act="new">Start a new game</button>`;
+  }
+  if(game.phase==="setup") return renderSetupAction();
+  // play phase
+  const c=cur();
+  if(ui.mono) return renderMonopoly();
+  if(game.pending && game.pending.type==="robber") return renderRobber();
+  if(game.pending && game.pending.type==="claudeOffers") return renderClaudeOffers();
+  if(ui.busy) return `<p class="hint">Claude is thinking… <button class="btn sm ghost" data-act="cancel-claude">Stop</button></p><div class="log" style="max-height:160px">${renderLog()}</div>`;
+
+  if(c.isClaude){
+    if(game.pendingRoll!=null){
+      return `<p class="hint">Claude already rolled <b>${game.pendingRoll}</b> this turn; its turn is paused (a request didn't finish).</p>
+        <button class="btn primary" data-act="claude-resume">Resume Claude's turn</button>
+        <button class="btn ghost" data-act="claude-end">End Claude's turn</button>`;
+    }
+    return `<p class="hint">It's Claude's turn.</p>
+      <button class="btn primary" data-act="claude-turn" ${sampleFn===null?"disabled":""}>Play Claude's turn</button>
+      ${sampleFn===null?`<p class="hint">Unavailable in this view — see the banner above. You can still run Claude manually.</p>`:""}`;
+  }
+  // human turn
+  if(game.pendingRoll==null){
+    return `<div class="field"><label>Dice roll for ${esc(c.name)}</label>
+      <div class="inline">
+        <select id="roll-val">${Array.from({length:11},(_,i)=>i+2).map(n=>`<option value="${n}" ${n===8?"selected":""}>${n}</option>`).join("")}</select>
+        <button class="btn primary" data-act="apply-roll">Apply roll</button>
+      </div></div>
+      <p class="hint">Enter the total of the two dice. A 7 ${game.round<=game.config.protectRounds?"means roll again this round (house rule).":"triggers discards + the robber."}</p>`;
+  }
+  return renderHumanMenu();
+}
+
+function renderSetupAction(){
+  if(game.setup.pickStarter){
+    return `<h3 style="font-size:13px;margin-bottom:6px">Who places first?</h3>
+      <p class="hint">Roll one die at the table — highest goes first — then tap that player. Setup then runs clockwise, the last player places twice, and it snakes back anticlockwise.</p>
+      <div class="actions-grid">
+        ${game.players.map(p=>`<button class="btn" data-act="set-starter:${p.id}"><span class="chip-color" style="background:${p.color};display:inline-block;vertical-align:middle;margin-right:6px"></span>${esc(p.name)}</button>`).join("")}
+        <button class="btn ghost" data-act="set-starter:random">Pick randomly</button>
+      </div>`;
+  }
+  const pid=game.setup.order[game.setup.step], sp=playerById(pid);
+  if(sp.isClaude){
+    return `<p class="hint">Claude places its ${game.setup.step<3?"first":"second"} settlement and road.</p>
+      <button class="btn primary" data-act="claude-setup" ${sampleFn===null?"disabled":""}>Let Claude place</button>
+      ${sampleFn===null?`<p class="hint">Claude's brain is unavailable here — place for it manually using the buttons after switching, or start with all-human.</p>`:""}`;
+  }
+  if(game.setup.phase==="settlement"){
+    return `<p class="hint"><b>${esc(sp.name)}</b>: tap one of the pulsing corners on the board to place a settlement.</p>
+      <button class="btn sm ghost" data-act="pick-setup-settlement">Re-highlight corners</button>`;
+  }
+  const n = legalRoadEdges(pid,{setup:true,fromVertex:game.setup.lastSettlement}).length;
+  return `<p class="hint"><b>${esc(sp.name)}</b>: tap one of the pulsing edges next to the new settlement to place a road.${n?"":" (No legal edge found — tap Re-highlight.)"}</p>
+    <button class="btn sm ghost" data-act="pick-setup-road">Re-highlight roads</button>`;
+}
+
+function renderHumanMenu(){
+  const c=cur();
+  const sub=ui.sub;
+  if(sub==="bank"){
+    const rates=portRatesFor(c.id), d=draft("bank-give"), d2=draft("bank-get");
+    return `<h3 style="font-size:13px;margin-bottom:6px">Bank / port trade</h3>
+      <p class="hint">Your rates: ${RES.map(r=>`${RES_META[r].label} ${rates[r]}:1`).join(" · ")}</p>
+      <label class="field"><label>Give</label></label>${steppers("bank-give",d)}
+      <div style="height:8px"></div>
+      <label class="field"><label>Receive</label></label>${steppers("bank-get",d2)}
+      <div class="inline" style="margin-top:10px"><button class="btn primary" data-act="do-bank">Confirm trade</button><button class="btn ghost" data-act="sub-cancel">Cancel</button></div>`;
+  }
+  if(sub==="tradeClaude") return renderTradeClaudeForm();
+  if(sub==="tradeHuman"){
+    const others=game.players.filter(p=>p.id!==c.id && !p.isClaude);
+    const d=draft("th-give"), d2=draft("th-get");
+    return `<h3 style="font-size:13px;margin-bottom:6px">Trade with another player</h3>
+      ${others.length? `<div class="field"><label>Other player</label><select id="th-target">${others.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div>`
+        : `<p class="hint">No other human player.</p>`}
+      <label class="field"><label>You give</label></label>${steppers("th-give",d)}
+      <div style="height:8px"></div>
+      <label class="field"><label>You receive</label></label>${steppers("th-get",d2)}
+      <div class="inline" style="margin-top:10px"><button class="btn primary" data-act="do-th">Apply trade</button><button class="btn ghost" data-act="sub-cancel">Cancel</button></div>`;
+  }
+  if(sub==="dev"){
+    return `<h3 style="font-size:13px;margin-bottom:6px">${esc(c.name)} plays a development card</h3>
+      <p class="hint">Pick from your physical hand. One per turn, and never one bought this turn (Victory Point cards can be revealed any time). The app blocks a card bought this turn based on your counts.</p>
+      <div class="actions-grid">
+        <button class="btn" data-act="play-dev:knight">Knight</button>
+        <button class="btn" data-act="play-dev:road">Road Building</button>
+        <button class="btn" data-act="play-dev:plenty">Year of Plenty</button>
+        <button class="btn" data-act="play-dev:mono">Monopoly</button>
+        <button class="btn" data-act="play-dev:vp">Reveal a VP card</button>
+        <button class="btn ghost" data-act="sub-cancel">Cancel</button>
+      </div>`;
+  }
+  if(sub==="yop"){
+    const d=draft("yop");
+    return `<h3 style="font-size:13px;margin-bottom:6px">Year of Plenty — take 2</h3>${steppers("yop",d)}
+      <div class="inline" style="margin-top:10px"><button class="btn primary" data-act="do-yop">Take</button><button class="btn ghost" data-act="sub-cancel">Cancel</button></div>`;
+  }
+  if(sub==="mono"){
+    return `<h3 style="font-size:13px;margin-bottom:6px">Monopoly — name a resource</h3>
+      <div class="actions-grid">${RES.map(r=>`<button class="btn" data-act="do-mono:${r}">${RES_META[r].label}</button>`).join("")}
+      <button class="btn ghost" data-act="sub-cancel">Cancel</button></div>`;
+  }
+  if(sub==="roadbuild"){
+    return `<p class="hint">Road Building: place ${2-(ui.rbPlaced||0)} more free road(s). Click highlighted edges.</p>
+      <button class="btn" data-act="pick-road-free">Highlight legal roads</button>
+      <button class="btn ghost" data-act="sub-cancel">Done / cancel</button>`;
+  }
+  // main menu
+  const canRoad = canAffordCount(c,COST.road) && legalRoadEdges(c.id).length && c.roads.length<15;
+  const canSet  = canAffordCount(c,COST.settlement) && legalSettlementVertices(c.id).length && c.settlements.length<5;
+  const canCity = canAffordCount(c,COST.city) && c.settlements.length>0 && c.cities.length<4;
+  const canDev  = canAffordCount(c,COST.dev);
+  return `<p class="hint">${esc(c.name)} rolled <b>${game.pendingRoll}</b>. Build, trade and play cards, then end the turn.</p>
+    <div class="actions-grid">
+      <button class="btn" data-act="build:road" ${canRoad?"":"disabled"}>Road <span class="hint">(${costStr(COST.road)})</span></button>
+      <button class="btn" data-act="build:settlement" ${canSet?"":"disabled"}>Settlement</button>
+      <button class="btn" data-act="build:city" ${canCity?"":"disabled"}>City</button>
+      <button class="btn" data-act="buy-dev" ${canDev?"":"disabled"}>Buy dev card</button>
+      <button class="btn" data-act="sub:dev" ${c.devCount>0?"":"disabled"}>Play dev card</button>
+      <button class="btn" data-act="sub:bank">Bank / port</button>
+      <button class="btn" data-act="sub:tradeClaude" ${sampleFn===null?"disabled":""}>Offer trade to Claude</button>
+      <button class="btn" data-act="sub:tradeHuman">Trade w/ player</button>
+    </div>
+    <button class="btn primary" style="width:100%;margin-top:10px" data-act="end-turn">End ${esc(c.name)}'s turn</button>
+    <p class="hint" style="margin-top:6px">Adjust card counts with −/+ in the scoreboard.</p>`;
+}
+function renderMonopoly(){
+  const m=ui.mono, r=m.res, by=playerById(m.by);
+  const cl=game.players.find(p=>p.isClaude);
+  return `<h3 style="font-size:13px;margin-bottom:6px">Monopoly on ${RES_META[r].label} — played by ${esc(by.name)}</h3>
+    <p class="hint">Every other player hands over <b>all</b> their ${RES_META[r].label}. Set how many each gives.</p>
+    ${m.humans.map(pid=>{
+      const p=playerById(pid);
+      return `<div class="inline" style="justify-content:space-between;margin:8px 0">
+        <span>${esc(p.name)} <span class="hint">(${p.cardCount} cards)</span></span>
+        <span class="cnt"><button class="cbtn" data-act="mono-adj:${pid}:-1">−</button><b>${m.amounts[pid]||0}</b><button class="cbtn" data-act="mono-adj:${pid}:1">+</button></span>
+      </div>`;
+    }).join("")}
+    ${cl && cl.id!==m.by? `<p class="hint">Claude automatically gives ${cl.hand[r]}.</p>`:""}
+    <button class="btn primary" style="width:100%;margin-top:8px" data-act="mono-apply">Collect ${RES_META[r].label}</button>`;
+}
+
+function renderTradeClaudeForm(){
+  const c=cur(); const d=draft("tc-give"), d2=draft("tc-get");
+  if(ui.tradeResult){
+    const tr=ui.tradeResult;
+    return `<h3 style="font-size:13px;margin-bottom:6px">Claude's answer</h3>
+      <div class="offer"><div class="terms">${esc(tr.headline)}</div>
+        ${tr.reason?`<p class="hint">“${esc(tr.reason)}”</p>`:""}
+        <div class="inline">${tr.canApply?`<button class="btn primary" data-act="tc-apply">Apply this trade</button>`:""}
+        <button class="btn ghost" data-act="sub-cancel">Close</button></div></div>`;
+  }
+  return `<h3 style="font-size:13px;margin-bottom:6px">Offer a trade to Claude</h3>
+    <label class="field"><label>You give Claude</label></label>${steppers("tc-give",d)}
+    <div style="height:8px"></div>
+    <label class="field"><label>You want from Claude</label></label>${steppers("tc-get",d2)}
+    <div class="inline" style="margin-top:10px">
+      <button class="btn primary" data-act="tc-send" ${sampleFn===null?"disabled":""}>Send offer</button>
+      <button class="btn ghost" data-act="sub-cancel">Cancel</button></div>`;
+}
+
+function renderRobber(){
+  const pd=game.pending;
+  if(pd.step==="discard"){
+    const rows=pd.discards.map(x=>{
+      const p=playerById(x.pid);
+      if(p.isClaude) return `<div class="offer"><div class="terms">Claude discards <b>${x.n}</b> (done automatically).</div></div>`;
+      return `<div class="offer"><div class="terms">${esc(p.name)} discards <b>${x.n}</b> of ${p.cardCount} — set the physical hand aside.</div>
+        <button class="btn sm" data-act="ack-discard:${p.id}">Done — ${esc(p.name)} discarded</button></div>`;
+    }).join("");
+    const remaining = pd.discards.filter(x=>!x.done && !playerById(x.pid).isClaude).length;
+    return `<h3 style="font-size:13px;margin-bottom:6px">A 7 was rolled — discards</h3>${rows}
+      ${remaining? `<p class="hint">Acknowledge each discard to continue.</p>`:`<button class="btn primary" data-act="robber-to-move">Continue to robber</button>`}`;
+  }
+  if(pd.step==="move"){
+    if(playerById(pd.mover).isClaude) return `<p class="hint">Claude is choosing where to move the robber…</p>`;
+    return `<h3 style="font-size:13px;margin-bottom:6px">Move the robber</h3>
+      <p class="hint">${esc(playerById(pd.mover).name)} clicks a highlighted hex.</p>
+      <button class="btn" data-act="pick-robber">Highlight hexes</button>`;
+  }
+  if(pd.step==="steal"){
+    if(playerById(pd.mover).isClaude) return `<p class="hint">Claude is choosing whom to rob…</p>`;
+    const cands=pd.stealCandidates.map(pid=>{
+      const p=playerById(pid);
+      return `<button class="btn" data-act="steal:${pid}">Steal from ${esc(p.name)} (${p.cardCount})</button>`;
+    }).join("");
+    return `<h3 style="font-size:13px;margin-bottom:6px">Steal a card</h3>
+      <div class="actions-grid">${cands || `<span class="hint">No one to steal from.</span>`}
+      <button class="btn ghost" data-act="steal:none">Steal from no one</button></div>`;
+  }
+  if(pd.step==="stealReveal"){
+    const p=playerById(pd.revealTo);
+    if(pd.claudeRobbedHuman){
+      return `<h3 style="font-size:13px;margin-bottom:6px">Claude robbed ${esc(playerById(pd.victim).name)}</h3>
+        <p class="hint">${esc(playerById(pd.victim).name)}: tap the resource Claude took (others, look away). It enters Claude's hidden hand.</p>
+        <div class="actions-grid">${RES.map(r=>`<button class="btn" data-act="claude-took:${r}">${RES_META[r].label}</button>`).join("")}</div>`;
+    }
+    return `<h3 style="font-size:13px;margin-bottom:6px">${esc(p.name)} stole from Claude</h3>
+      <p class="hint">Reveal to ${esc(p.name)} only — others look away.</p>
+      <button class="btn" data-act="reveal-steal">${ui.revealShown? RES_META[pd.stolen].label : "Reveal the stolen card"}</button>
+      ${ui.revealShown? `<button class="btn primary" style="margin-left:8px" data-act="robber-done">Continue</button>`:""}`;
+  }
+  return "";
+}
+
+function renderClaudeOffers(){
+  const pd=game.pending;
+  const rows=pd.offers.map((o,i)=>{
+    const give=RES.filter(r=>o.give[r]).map(r=>`${o.give[r]} ${RES_META[r].label}`).join(", ")||"nothing";
+    const get=RES.filter(r=>o.get[r]).map(r=>`${o.get[r]} ${RES_META[r].label}`).join(", ")||"nothing";
+    const humans=game.players.filter(p=>!p.isClaude);
+    return `<div class="offer">
+      <div class="terms">Claude gives <b>${give}</b>, wants <b>${get}</b>${o.to&&o.to!=="any"?` from ${esc(playerById(o.to)?.name||o.to)}`:""}.</div>
+      ${o.reason?`<p class="hint">“${esc(o.reason)}”</p>`:""}
+      <div class="inline">
+        ${humans.map(h=>`<button class="btn sm" data-act="accept-offer:${i}:${h.id}">Accept as ${esc(h.name)}</button>`).join("")}
+        <button class="btn sm ghost" data-act="decline-offer:${i}">Decline</button>
+      </div></div>`;
+  }).join("");
+  return `<h3 style="font-size:13px;margin-bottom:6px">Claude proposes a trade</h3>${rows}
+    <button class="btn primary" style="margin-top:6px" data-act="offers-done">None / done — continue Claude's turn</button>`;
+}
+
+/* ---------------- CONFIG SCREEN ---------------- */
+function renderConfig(){
+  const c = ui.cfg || (ui.cfg={names:["Player 1","Player 2","Claude"], claudeIdx:2, protectRounds:2, ports:"standard", hexes:clone(STANDARD_BOARD)});
+  return `<div class="card"><div class="hd"><h2>New game setup</h2>
+    ${ui._prevGame? `<button class="btn sm ghost" data-act="cfg-back">← Back to current game</button>`:""}</div><div class="bd">
+    ${ui._prevGame? `<div class="banner warn">You have a game in progress. Pressing <b>&nbsp;Start setup&nbsp;</b> below replaces it.</div>`:""}
+    <div class="actions-grid" style="grid-template-columns:1fr 1fr 1fr">
+      ${[0,1,2].map(i=>`<div class="field"><label>Player ${i+1} name</label><input type="text" data-cfg-name="${i}" value="${esc(c.names[i])}"></div>`).join("")}
+    </div>
+    <div class="field"><label>Which seat is Claude?</label>
+      <select data-cfg="claudeIdx">${[0,1,2].map(i=>`<option value="${i}" ${c.claudeIdx===i?"selected":""}>Seat ${i+1} — ${esc(c.names[i])}</option>`).join("")}</select></div>
+    <div class="inline">
+      <div class="field" style="flex:1"><label>Disable 7s for the first N rounds</label><input type="number" min="0" max="5" data-cfg="protectRounds" value="${c.protectRounds}"></div>
+      <div class="field" style="flex:1"><label>Ports</label><select data-cfg="ports"><option value="standard" ${c.ports==="standard"?"selected":""}>Standard (auto-placed)</option><option value="none" ${c.ports==="none"?"selected":""}>None</option></select></div>
+    </div>
+    <div class="field"><label>Terrain</label>
+      <div class="inline">
+        <button class="btn sm" data-act="cfg-standard">Standard layout</button>
+        <button class="btn sm" data-act="cfg-random">Randomize terrain</button>
+        <span class="hint">Click a hex to change its resource${c.tokenMode==="spiral"?" — in A–R mode a click sets the spiral start tile":" or number"}.</span>
+      </div>
+    </div>
+    <div class="field"><label>Number tokens</label>
+      <div class="inline">
+        <button class="btn sm ${c.tokenMode!=="spiral"?"primary":""}" data-act="cfg-tokenmode:manual">Enter by hand</button>
+        <button class="btn sm ${c.tokenMode==="spiral"?"primary":""}" data-act="cfg-tokenmode:spiral">A–R spiral (standard)</button>
+        ${c.tokenMode==="spiral"?`
+          <span class="hint">start at hex ${c.spiralStart||1}, going</span>
+          <button class="btn sm ${(c.spiralDir||"cw")==="cw"?"primary":""}" data-act="cfg-spiraldir:cw">clockwise</button>
+          <button class="btn sm ${c.spiralDir==="ccw"?"primary":""}" data-act="cfg-spiraldir:ccw">counter-cw</button>
+          <button class="btn sm" data-act="cfg-apply-spiral">Re-lay</button>`:""}
+      </div>
+      ${c.tokenMode==="spiral"?`<p class="hint" style="margin-top:6px">Numbers update live: A–R = 5,2,6,3,8,10,9,12,11,4,8,10,9,4,5,6,3,11, laid around the outer ring, then the inner ring, then centre — skipping the desert. Click a hex to move the spiral start; toggle the direction above. Tweak any hex by hand after.</p>`:""}
+    </div>
+    <div class="board-frame" style="max-width:520px">${renderConfigBoard()}</div>
+    <button class="btn primary" style="width:100%;margin-top:12px" data-act="cfg-start">Start setup →</button>
+    <p class="hint" style="margin-top:8px">Standard base-game mix: 4 wood · 3 brick · 4 sheep · 4 wheat · 3 ore · 1 desert. Tokens 2–12 (two of each except 2 and 12).</p>
+  </div></div>`;
+}
+function renderConfigBoard(){
+  const c=ui.cfg;
+  const HEXFILL={wood:"#3f6b3a",brick:"#b3623f",sheep:"#8fae5d",wheat:"#d8a53a",ore:"#7d8a99",desert:"#d9c9a3"};
+  // temporary geometry just for drawing
+  const tmp=[]; let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(let id=1;id<=19;id++){ const cs=hexCorners(id); for(const [x,y] of cs){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);} }
+  const pad=20;
+  let s=`<svg class="board" viewBox="${minX-pad} ${minY-pad} ${maxX-minX+pad*2} ${maxY-minY+pad*2}">`;
+  s+=`<rect x="${minX-pad}" y="${minY-pad}" width="${maxX-minX+pad*2}" height="${maxY-minY+pad*2}" rx="10" fill="var(--sea)"></rect>`;
+  for(let id=1;id<=19;id++){
+    const h=c.hexes[id-1]; const {cx,cy}=hexCenter(id);
+    const pts=hexCorners(id).map(p=>p.map(n=>n.toFixed(1)).join(",")).join(" ");
+    const isStart = c.tokenMode==="spiral" && (c.spiralStart||1)===id;
+    s+=`<polygon class="hit" data-kind="cfg-hex" data-key="${id}" points="${pts}" fill="${HEXFILL[h.r]}" stroke="${isStart?'var(--accent)':'rgba(0,0,0,.25)'}" stroke-width="${isStart?4:1.5}" style="cursor:pointer;fill-opacity:1"></polygon>`;
+    if(h.t) s+=`<circle cx="${cx}" cy="${cy}" r="13" fill="var(--token)"></circle><text class="tok-num" x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle" font-size="13" fill="${h.t===6||h.t===8?'var(--red-num)':'var(--token-ink)'}">${h.t}</text>`;
+    else s+=`<text x="${cx}" y="${cy+3}" text-anchor="middle" font-size="10" fill="rgba(0,0,0,.5)">desert</text>`;
+  }
+  s+=`</svg>`;
+  if(ui.cfgEdit!=null){
+    const h=c.hexes[ui.cfgEdit-1];
+    s+=`<div class="offer" style="margin-top:8px"><div class="terms">Hex ${ui.cfgEdit}</div>
+      <div class="actions-grid" style="grid-template-columns:repeat(3,1fr)">
+      ${["wood","brick","sheep","wheat","ore","desert"].map(r=>`<button class="btn sm ${h.r===r?'primary':''}" data-act="cfg-res:${r}">${r}</button>`).join("")}
+      </div>
+      <div class="inline" style="margin-top:8px"><label class="hint">number</label>
+      <select data-act-sel="cfg-tok">${[0,2,3,4,5,6,8,9,10,11,12].map(n=>`<option value="${n}" ${h.t===n?'selected':''}>${n||'—'}</option>`).join("")}</select>
+      <button class="btn sm ghost" data-act="cfg-edit-close">close</button></div></div>`;
+  }
+  return s;
+}
+
+/* ============================================================ WIRING */
+function render_(){ render(); }
+function beginPick(mode,keys,onPick){ ui.pick={mode,keys:keys.map(String),onPick}; render(); }
+function cancelPick(){ ui.pick=null; }
+
+function wireConfig(){
+  $("#app").onclick = onConfigClick;
+  $$("#app [data-cfg-name]").forEach(inp=>inp.oninput=e=>{ ui.cfg.names[+inp.dataset.cfgName]=inp.value; });
+  $$("#app [data-cfg]").forEach(inp=>inp.onchange=e=>{
+    const k=inp.dataset.cfg;
+    ui.cfg[k] = (k==="claudeIdx"||k==="protectRounds") ? +inp.value : inp.value;
+  });
+  const sel=$('#app [data-act-sel="cfg-tok"]');
+  if(sel) sel.onchange=e=>{ ui.cfg.hexes[ui.cfgEdit-1].t=+sel.value; render(); };
+}
+function onConfigClick(e){
+  const hit=e.target.closest("[data-act],[data-kind]"); if(!hit) return;
+  if(hit.dataset.kind==="cfg-hex"){
+    const id=+hit.dataset.key;
+    if(ui.cfg.tokenMode==="spiral"){ ui.cfg.spiralStart=id; applyARSpiral(); }
+    else { ui.cfgEdit=id; render(); }
+    return;
+  }
+  const [act,arg]=(hit.dataset.act||"").split(":");
+  if(act==="cfg-standard"){ ui.cfg.hexes=clone(STANDARD_BOARD); if(ui.cfg.tokenMode==="spiral") applyARSpiral(); else render(); }
+  else if(act==="cfg-random"){ ui.cfg.hexes=randomBoard(); if(ui.cfg.tokenMode==="spiral") applyARSpiral(); else render(); }
+  else if(act==="cfg-res"){ ui.cfg.hexes[ui.cfgEdit-1].r=arg; if(arg==="desert")ui.cfg.hexes[ui.cfgEdit-1].t=0; if(ui.cfg.tokenMode==="spiral") applyARSpiral(); else render(); }
+  else if(act==="cfg-edit-close"){ ui.cfgEdit=null; render(); }
+  else if(act==="cfg-tokenmode"){ ui.cfg.tokenMode=arg; ui.cfgEdit=null; if(arg==="spiral"){ ui.cfg.spiralStart=ui.cfg.spiralStart||1; ui.cfg.spiralDir=ui.cfg.spiralDir||"cw"; applyARSpiral(); } else render(); }
+  else if(act==="cfg-spiraldir"){ ui.cfg.spiralDir=arg; applyARSpiral(); }
+  else if(act==="cfg-apply-spiral"){ applyARSpiral(); }
+  else if(act==="cfg-back"){ if(ui._prevGame){ game=ui._prevGame; ui={}; render(); } }
+  else if(act==="cfg-start"){ startFromConfig(); }
+}
+function applyARSpiral(){
+  const c=ui.cfg;
+  const order=spiralOrder(c.spiralStart||1, c.spiralDir||"cw");
+  let ni=0;
+  for(const id of order){
+    const h=c.hexes[id-1];
+    if(h.r==="desert"){ h.t=0; continue; }
+    h.t = AR_NUMBERS[ni++] || 0;
+  }
+  render();
+}
+function randomBoard(){
+  const bag=[]; for(const [r,n] of [["wood",4],["brick",3],["sheep",4],["wheat",4],["ore",3]]) for(let i=0;i<n;i++) bag.push(r);
+  bag.push("desert");
+  for(let i=bag.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [bag[i],bag[j]]=[bag[j],bag[i]]; }
+  const toks=[2,3,3,4,4,5,5,6,6,8,8,9,9,10,10,11,11,12];
+  for(let i=toks.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [toks[i],toks[j]]=[toks[j],toks[i]]; }
+  let ti=0;
+  return bag.map(r=>({r, t: r==="desert"?0:toks[ti++]}));
+}
+function startFromConfig(){
+  const c=ui.cfg;
+  newGame({names:c.names.slice(), claudeIdx:+c.claudeIdx, protectRounds:+c.protectRounds, ports:c.ports, hexes:clone(c.hexes)});
+  game.phase="setup";
+  logLine("Setup — first choose who places first.","big");
+  commit();
+}
+
+function wireBoard(){
+  const svg=$("#app svg.board"); if(!svg) return;
+  svg.onclick=e=>{
+    const hit=e.target.closest(".hit[data-kind]"); if(!hit || !ui.pick) return;
+    const kind=hit.dataset.kind, key=hit.dataset.key;
+    const cb=ui.pick.onPick; ui.pick=null;
+    cb(kind,key);
+  };
+}
+
+function wirePanels(){
+  $("#app").onclick = onAppClick;
+  // steppers
+  $$('#app [data-steppers]').forEach(box=>{
+    box.querySelectorAll('[data-step]').forEach(btn=>btn.onclick=()=>{
+      const [r,dv]=btn.dataset.step.split(":"); const ctx=box.dataset.steppers;
+      const v=draft(ctx); v[r]=Math.max(0,(v[r]||0)+ (+dv));
+      const rv=box.querySelector(`[data-rv="${r}"]`); if(rv) rv.textContent=v[r];
+    });
+  });
+}
+
+/* ============================================================ ACTIONS */
+function onAppClick(e){
+  const hit=e.target.closest("[data-act]"); if(!hit) return;
+  const parts=(hit.dataset.act||"").split(":");
+  const act=parts[0], a1=parts[1], a2=parts[2];
+  const c=cur();
+  switch(act){
+    case "new": startConfig(); break;
+    case "dismiss-import": ui.importErr=null; render(); break;
+    case "reveal-deck": game.dev.revealed=true; renderFairness(); break;
+    case "cancel-claude": ui.cancelClaude=true; if(ui._abort) ui._abort.abort(); break;
+
+    /* setup */
+    case "set-starter": chooseStarter(a1); break;
+    case "claude-setup": claudeSetupPlace(); break;
+    case "pick-setup-settlement": {
+      const pid=game.setup.order[game.setup.step];
+      beginPick("vertex", legalSettlementVertices(pid,{setup:true}), (k,key)=>placeSetupSettlement(pid,key));
+      break;
+    }
+    case "pick-setup-road": {
+      const pid=game.setup.order[game.setup.step];
+      beginPick("edge", legalRoadEdges(pid,{setup:true,fromVertex:game.setup.lastSettlement}), (k,key)=>placeSetupRoad(pid,key));
+      break;
+    }
+
+    /* roll */
+    case "apply-roll": { const n=+$("#roll-val").value; resolveRoll(n,false); break; }
+    case "claude-turn": runClaudeTurn(); break;
+    case "claude-resume": resumeClaudeTurn(); break;
+    case "claude-end": if(cur().isClaude && !ui.busy) endTurn(); break;
+
+    /* build */
+    case "build": startBuild(a1); break;
+    case "buy-dev": humanBuyDev(); break;
+    case "pick-road-free":
+      beginPick("edge", legalRoadEdges(c.id), (k,key)=>{ placeRoad(c.id,key,true); ui.rbPlaced=(ui.rbPlaced||0)+1;
+        if(ui.rbPlaced>=2){ ui.sub=null; ui.rbPlaced=0; } commit(); });
+      break;
+
+    /* subpanels */
+    case "sub": ui.sub=a1; ui.tradeResult=null; clearDrafts(); commit(); break;
+    case "sub-cancel": ui.sub=null; clearDrafts(); ui.tradeResult=null; ui.rbPlaced=0; commit(); break;
+
+    case "do-bank": doBankTrade(); break;
+    case "do-th": doHumanTrade(); break;
+    case "tc-send": sendTradeToClaude(); break;
+    case "tc-apply": if(ui.tradeResult&&ui.tradeResult.apply){ ui.tradeResult.apply(); ui.sub=null; ui.tradeResult=null; clearDrafts(); commit(); } break;
+
+    case "play-dev": humanPlayDev(a1); break;
+    case "do-yop": {
+      const v=draft("yop"); if(sum(v)!==2){ flash("Pick exactly 2."); return; }
+      gainRes(c,v); logLine(`${c.name} took ${RES.filter(r=>v[r]).map(r=>v[r]+" "+RES_META[r].label).join(", ")} (Year of Plenty).`);
+      c.playedDevThisTurn=true; c.devCount=Math.max(0,c.devCount-1); ui.sub=null; clearDrafts(); commit(); break;
+    }
+    case "do-mono": startMonopoly(c.id, a1); break;
+    case "mono-adj": {
+      const pid=a1, d=+a2, p=playerById(pid);
+      ui.mono.amounts[pid]=Math.max(0, Math.min(p.cardCount, (ui.mono.amounts[pid]||0)+d));
+      commit(); break;
+    }
+    case "mono-apply": applyMonopoly(); break;
+    case "cadj": { const p=playerById(a1); if(p&&!p.isClaude){ p.cardCount=Math.max(0,p.cardCount+(+a2)); commit(); } break; }
+
+    case "end-turn": endTurn(); break;
+
+    /* robber */
+    case "ack-discard": { const x=game.pending.discards.find(d=>d.pid===a1); if(x){ x.done=true; playerById(a1).cardCount=Math.max(0,playerById(a1).cardCount-x.n); logLine(`${playerById(a1).name} discarded ${x.n}.`);} maybeRobberAdvance(); break; }
+    case "robber-to-move": game.pending.step="move"; commit(); break;
+    case "pick-robber":
+      beginPick("hex", game.board.hexes.map(h=>h.id).filter(id=>id!==game.board.robberHex), (k,key)=>moveRobber(+key));
+      break;
+    case "steal": doSteal(a1); break;
+    case "claude-took": { const r=a1; const cl=game.players.find(p=>p.isClaude);
+      cl.hand[r]++; cl.cardCount++; const v=playerById(game.pending.victim); v.cardCount=Math.max(0,v.cardCount-1);
+      logLine(`Claude robbed ${v.name}.`,"claude"); finishRobber(); break; }
+    case "reveal-steal": ui.revealShown=true; render(); break;
+    case "robber-done": finishRobber(); break;
+
+    /* claude offers */
+    case "accept-offer": acceptClaudeOffer(+a1,a2); break;
+    case "decline-offer": { game.pending.offers.splice(+a1,1); if(!game.pending.offers.length){ game.pending=null; afterClaudeOffers(); } else commit(); break; }
+    case "offers-done": game.pending=null; afterClaudeOffers(); break;
+
+    case "cancel": break;
+  }
+}
+function flash(msg){ logLine(msg); render(); }
+function startConfig(){
+  const prev = (game && game.phase && game.phase!=="config" && !game.isExample && game.phase!=="over") ? game : null;
+  ui={ cfg:{names:["Player 1","Player 2","Claude"], claudeIdx:2, protectRounds:2, ports:"standard", hexes:clone(STANDARD_BOARD)}, _prevGame:prev };
+  game={phase:"config"};
+  render();
+}
+
+/* ---------------- setup flow ---------------- */
+function chooseStarter(sel){
+  let s;
+  if(sel==="random"){ s=rint(3); logLine(`Randomly chose ${game.players[s].name} to place first.`,"rng"); }
+  else { s=game.players.findIndex(p=>p.id===sel); if(s<0) s=0; logLine(`${game.players[s].name} places first.`); }
+  const cw=[s,(s+1)%3,(s+2)%3];
+  const order=[...cw, ...cw.slice().reverse()].map(i=>game.players[i].id);
+  game.setup.order=order;
+  game.setup.pickStarter=false;
+  game.setup.step=0;
+  game.setup.phase="settlement";
+  game.setup.lastSettlement=null;
+  logLine("Order: "+order.slice(0,3).map(id=>playerById(id).name).join(" → ")+"  then back  "+order.slice(3).map(id=>playerById(id).name).join(" → ")+".","big");
+  commit();
+  const first=playerById(order[0]);
+  if(first.isClaude && sampleFn!==null) setTimeout(claudeSetupPlace,300);
+  else setupAutoPick();
+}
+function placeSetupSettlement(pid,key){
+  const p=playerById(pid);
+  p.settlements.push(key);
+  game.setup.lastSettlement=key;
+  game.setup.phase="road";
+  logLine(`${p.name} places a settlement at ${vDesc(key)}.`);
+  if(game.setup.step>=3){ // second placement → starting resources
+    const g=game.board.geom, got={};
+    for(const id of g.verts[key].hexes){
+      const h=game.board.hexes[id-1];
+      if(h.resource!=="desert") got[h.resource]=(got[h.resource]||0)+1;
+    }
+    gainRes(p,got);
+    logLine(`${p.name} collects starting resources: ${RES.filter(r=>got[r]).map(r=>got[r]+" "+RES_META[r].label).join(", ")||"none"}.`);
+  }
+  commit();
+  setupAutoPick();
+}
+function placeSetupRoad(pid,key){
+  const p=playerById(pid);
+  p.roads.push(key);
+  logLine(`${p.name} places a road.`);
+  advanceSetup();
+}
+/* highlight the legal spots automatically for a human's setup turn */
+function setupAutoPick(){
+  if(!game || game.phase!=="setup" || game.setup.pickStarter) return;
+  const pid=game.setup.order[game.setup.step], p=playerById(pid);
+  if(!p || p.isClaude) return;
+  if(game.setup.phase==="settlement"){
+    beginPick("vertex", legalSettlementVertices(pid,{setup:true}), (k,key)=>placeSetupSettlement(pid,key));
+  } else {
+    beginPick("edge", legalRoadEdges(pid,{setup:true,fromVertex:game.setup.lastSettlement}), (k,key)=>placeSetupRoad(pid,key));
+  }
+}
+function advanceSetup(){
+  game.setup.step++;
+  game.setup.phase="settlement";
+  game.setup.lastSettlement=null;
+  if(game.setup.step>=6){
+    game.phase="play"; game.currentIdx=0; game.turn=1; game.round=1;
+    recomputeAll();
+    logLine("Setup complete. "+game.players[0].name+" begins.","big");
+  }
+  commit();
+  if(game.phase==="setup"){
+    const pid=game.setup.order[game.setup.step];
+    if(playerById(pid).isClaude && sampleFn!==null && !ui.busy) setTimeout(claudeSetupPlace,300);
+    else setupAutoPick();
+  } else if(game.phase==="play" && cur().isClaude && sampleFn!==null && !game.isExample){
+    setTimeout(runClaudeTurn,400);
+  }
+}
+
+/* ---------------- roll resolution ---------------- */
+function resolveRoll(n, isClaude){
+  // house rule: no 7s in the first N rounds — roll again
+  if(n===7 && game.round<=game.config.protectRounds){
+    game.pendingRoll=null;
+    logLine(`${cur().name} rolled 7 — roll again (no 7s in the first ${game.config.protectRounds} round${game.config.protectRounds===1?"":"s"}).`, isClaude?"claude":"");
+    commit();
+    return "reroll";
+  }
+  game.pendingRoll=n;
+  game.players.forEach(p=>p.playedDevThisTurn=p.playedDevThisTurn||false);
+  logLine(`${cur().name} rolled ${n}.`, isClaude?"claude":"");
+  if(n===7){ startRobber(cur().id); return; }
+  const gain=applyProduction(n);
+  logLine("Production — "+gainSummary(gain), isClaude?"claude":"");
+  commit();
+}
+
+/* ---------------- robber ---------------- */
+function startRobber(moverId){
+  const discards=[];
+  for(const p of game.players){
+    if(p.cardCount>7){
+      const nn=Math.floor(p.cardCount/2);
+      if(p.isClaude){
+        for(let i=0;i<nn;i++){ const r=drawRandomKey(p.hand); if(r){ p.hand[r]--; } }
+        p.cardCount=sum(p.hand);
+        game.rng.log.push({kind:"discard",pid:p.id,n:nn});
+        logLine(`Claude discards ${nn} (random).`,"rng");
+        discards.push({pid:p.id,n:nn,done:true});
+      }else{
+        discards.push({pid:p.id,n:nn,done:false});
+      }
+    }
+  }
+  game.pending={type:"robber", mover:moverId, discards, step: discards.some(d=>!d.done)?"discard":"move"};
+  commit();
+}
+function maybeRobberAdvance(){
+  if(game.pending.discards.every(d=>d.done)) game.pending.step="move";
+  commit();
+  if(game.pending && game.pending.step==="move" && cur().isClaude && sampleFn!==null && !ui.busy){
+    ui.busy=true; render();
+    claudeRobberDecision();
+  }
+}
+function moveRobber(hexId){
+  game.board.robberHex=hexId;
+  const h=game.board.hexes[hexId-1];
+  logLine(`${playerById(game.pending.mover).name} moves the robber to ${h.resource==="desert"?"the desert":RES_META[h.resource].label+"-"+h.token}.`);
+  // steal candidates: players (not mover) with a building on that hex and >0 cards
+  const g=game.board.geom, b=allBuildings(), set=new Set();
+  for(const k in g.verts){ if(!g.verts[k].hexes.includes(hexId)) continue; const o=b[k]; if(o && o.pid!==game.pending.mover) set.add(o.pid); }
+  const cands=[...set].filter(pid=>playerById(pid).cardCount>0);
+  game.pending.stealCandidates=cands;
+  game.pending.step="steal";
+  commit();
+  // if mover is Claude, Claude picks target automatically via runClaudeTurn continuation
+}
+function doSteal(targetId){
+  const pd=game.pending, mover=playerById(pd.mover);
+  if(targetId==="none"){ logLine(`${mover.name} steals from no one.`); finishRobber(); return; }
+  const victim=playerById(targetId);
+  if(victim.isClaude){
+    // mover (human) takes a random card from Claude's hidden hand
+    const r=drawRandomKey(victim.hand);
+    game.rng.log.push({kind:"steal",from:"claude",to:mover.id,res:r});
+    if(r){ victim.hand[r]--; victim.cardCount=sum(victim.hand); }
+    pd.step="stealReveal"; pd.revealTo=mover.id; pd.stolen=r; pd.claudeRobbedHuman=false;
+    if(!mover.isClaude){ mover.cardCount++; } // mover gains a (physical) card
+    ui.revealShown=false;
+    commit();
+  }else if(mover.isClaude){
+    // Claude robs a human → that human taps what was taken
+    pd.step="stealReveal"; pd.victim=targetId; pd.claudeRobbedHuman=true;
+    commit();
+  }else{
+    // human robs human
+    victim.cardCount=Math.max(0,victim.cardCount-1); mover.cardCount++;
+    logLine(`${mover.name} steals 1 card from ${victim.name}.`);
+    finishRobber();
+  }
+}
+function finishRobber(){
+  const wasClaudeTurn = playerById(game.pending.mover).isClaude;
+  game.pending=null; ui.revealShown=false;
+  commit();
+  if(wasClaudeTurn && ui.claudeResume){ const f=ui.claudeResume; ui.claudeResume=null; setTimeout(f,200); }
+}
+
+/* ---------------- build ---------------- */
+function startBuild(kind){
+  const c=cur();
+  if(kind==="road") beginPick("edge", legalRoadEdges(c.id), (k,key)=>placeRoad(c.id,key,false));
+  if(kind==="settlement") beginPick("vertex", legalSettlementVertices(c.id), (k,key)=>placeSettlement(c.id,key));
+  if(kind==="city") beginPick("vertex", legalCityVertices(c.id), (k,key)=>placeCity(c.id,key));
+}
+function placeRoad(pid,key,free){
+  const p=playerById(pid);
+  if(!free){ if(!canAffordCount(p,COST.road)){ flash("Can't afford a road."); return; } payCost(p,COST.road); }
+  p.roads.push(key);
+  logLine(`${p.name} builds a road${free?" (free)":""}.`);
+  recomputeAll(); checkWinFor(p); commit();
+}
+function placeSettlement(pid,key){
+  const p=playerById(pid);
+  if(!canAffordCount(p,COST.settlement)){ flash("Can't afford a settlement."); return; }
+  payCost(p,COST.settlement); p.settlements.push(key);
+  logLine(`${p.name} builds a settlement at ${vDesc(key)}.`);
+  recomputeAll(); checkWinFor(p); commit();
+}
+function placeCity(pid,key){
+  const p=playerById(pid);
+  if(!canAffordCount(p,COST.city)){ flash("Can't afford a city."); return; }
+  const i=p.settlements.indexOf(key); if(i<0){ flash("No settlement there."); return; }
+  payCost(p,COST.city); p.settlements.splice(i,1); p.cities.push(key);
+  logLine(`${p.name} upgrades to a city at ${vDesc(key)}.`);
+  recomputeAll(); checkWinFor(p); commit();
+}
+function humanBuyDev(){
+  const c=cur();
+  if(!canAffordCount(c,COST.dev)){ flash("Can't afford a dev card."); return; }
+  payCost(c,COST.dev); c.devCount++; c.devBoughtThisTurn=(c.devBoughtThisTurn||0)+1;
+  logLine(`${c.name} buys a development card (from the physical deck).`);
+  commit();
+}
+function humanPlayDev(type){
+  const c=cur();
+  if(type==="vp"){ c.vpCards++; logLine(`${c.name} reveals a Victory Point card.`); if(checkWinFor(c)){commit();return;} c.devCount=Math.max(0,c.devCount-1); ui.sub=null; commit(); return; }
+  if(c.playedDevThisTurn){ flash("Only one development card per turn."); return; }
+  if(c.devCount - (c.devBoughtThisTurn||0) < 1){ flash("You can't play a card bought this turn — wait until your next turn."); return; }
+  if(type==="knight"){
+    c.knightsPlayed++; c.playedDevThisTurn=true; c.devCount=Math.max(0,c.devCount-1);
+    logLine(`${c.name} plays a Knight.`);
+    updateLargestArmy(); checkWinFor(c);
+    ui.sub=null; startRobber(c.id); return;
+  }
+  if(type==="road"){ c.playedDevThisTurn=true; c.devCount=Math.max(0,c.devCount-1); logLine(`${c.name} plays Road Building.`); ui.sub="roadbuild"; ui.rbPlaced=0; commit(); return; }
+  if(type==="plenty"){ ui.sub="yop"; clearDrafts(); commit(); return; }
+  if(type==="mono"){ ui.sub="mono"; commit(); return; }
+}
+/* Monopoly — inline collection panel, works for a human OR Claude as the player */
+function startMonopoly(byId, res){
+  if(!RES.includes(res)) return false;
+  const by=playerById(byId);
+  if(by.isClaude){
+    const di=(by.devCards||[]).findIndex(d=>d.type==="mono" && d.boughtTurn<game.turn);
+    if(di<0){ logLine("Claude has no playable Monopoly.","claude"); return false; }
+    by.devCards.splice(di,1);
+  }
+  by.devCount=Math.max(0,by.devCount-1);
+  by.playedDevThisTurn=true;
+  const humans=game.players.filter(p=>!p.isClaude && p.id!==byId).map(p=>p.id);
+  ui.mono={ by:byId, res, humans, amounts:{} };
+  humans.forEach(pid=>ui.mono.amounts[pid]=0);
+  ui.sub=null;
+  commit();
+  return true;
+}
+function applyMonopoly(){
+  const m=ui.mono; if(!m) return;
+  const by=playerById(m.by), r=m.res, cl=game.players.find(p=>p.isClaude);
+  let got=0;
+  for(const pid of m.humans){ const q=Math.max(0,m.amounts[pid]||0); playerById(pid).cardCount-=q; got+=q; }
+  if(cl && cl.id!==m.by){ got+=cl.hand[r]; cl.hand[r]=0; cl.cardCount=sum(cl.hand); }
+  by.cardCount+=got; if(by.isClaude) by.hand[r]+=got;
+  logLine(`${by.name} played Monopoly on ${RES_META[r].label} — collected ${got}.`, by.isClaude?"claude":"");
+  const wasClaude=by.isClaude;
+  ui.mono=null;
+  checkWinFor(by);
+  commit();
+  if(wasClaude && ui.claudeResume){ const f=ui.claudeResume; ui.claudeResume=null; setTimeout(f,150); }
+}
+
+/* ---------------- trades ---------------- */
+function doBankTrade(){
+  const c=cur(), give=draft("bank-give"), get=draft("bank-get");
+  const rates=portRatesFor(c.id);
+  let cost=0; for(const r of RES){ if(give[r]% rates[r]!==0){ flash(`${RES_META[r].label} must be given in multiples of ${rates[r]}.`); return; } cost+=give[r]/rates[r]; }
+  if(cost<=0 || cost!==sum(get)){ flash("Trade isn't balanced for your rates."); return; }
+  if(c.isClaude && !RES.every(r=>c.hand[r]>=give[r])){ flash("Claude doesn't have those cards."); return; }
+  if(sum(give)>c.cardCount){ flash("Not enough cards."); return; }
+  payCost(c,give); gainRes(c,get);
+  logLine(`${c.name} trades ${RES.filter(r=>give[r]).map(r=>give[r]+" "+RES_META[r].label).join(", ")} → ${RES.filter(r=>get[r]).map(r=>get[r]+" "+RES_META[r].label).join(", ")} with the bank.`);
+  ui.sub=null; clearDrafts(); commit();
+}
+function doHumanTrade(){
+  const c=cur();
+  const tid=$("#th-target")?.value; const other=tid?playerById(tid):null;
+  const give=draft("th-give"), get=draft("th-get");
+  if(!other){ flash("No other player."); return; }
+  if(sum(give)>c.cardCount || sum(get)>other.cardCount){ flash("Someone doesn't have those cards."); return; }
+  c.cardCount-=sum(give); c.cardCount+=sum(get);
+  other.cardCount-=sum(get); other.cardCount+=sum(give);
+  if(c.isClaude){ for(const r of RES){ c.hand[r]-=give[r]; c.hand[r]+=get[r]; } }
+  if(other.isClaude){ for(const r of RES){ other.hand[r]-=get[r]; other.hand[r]+=give[r]; } }
+  logLine(`${c.name} ↔ ${other.name}: ${RES.filter(r=>give[r]).map(r=>give[r]+" "+RES_META[r].label).join(", ")||"nothing"} for ${RES.filter(r=>get[r]).map(r=>get[r]+" "+RES_META[r].label).join(", ")||"nothing"}.`);
+  ui.sub=null; clearDrafts(); commit();
+}
+
+/* ---------------- end turn ---------------- */
+function endTurn(){
+  const c=cur();
+  if(checkWinFor(c)){ commit(); return; }
+  c.playedDevThisTurn=false; c.devBoughtThisTurn=0;
+  game.pendingRoll=null; game.pending=null; ui.sub=null; clearDrafts(); ui.rbPlaced=0; ui.claudeResume=null;
+  game.currentIdx=(game.currentIdx+1)%3;
+  game.turn++;
+  if(game.currentIdx===0) game.round++;
+  recomputeAll();
+  logLine(`— ${cur().name}'s turn (turn ${game.turn}, round ${game.round}) —`);
+  commit();
+  if(cur().isClaude && sampleFn!==null && !game.isExample) setTimeout(runClaudeTurn, 400);
+}
+
+/* ============================================================ CLAUDE */
+async function getSample(){
+  if(sampleFn!==undefined) return sampleFn;
+  try{ sampleFn = (window.claude && claude.use) ? await claude.use("sample") : null; }
+  catch(e){ sampleFn=null; }
+  return sampleFn;
+}
+async function askJSON(prompt, tier="complex"){
+  const s=await getSample();
+  if(!s){ const e=new Error("Claude is unavailable in this view"); e.code="not_granted"; throw e; }
+  ui._abort=new AbortController();
+  try{ return await s.json(prompt, {modelTier:tier, cache:false, signal:ui._abort.signal}); }
+  finally{ ui._abort=null; }
+}
+const RN = n => n.toFixed? n : n;
+
+/* ---- state serialization for Claude ---- */
+function claudeStateView(){
+  const g=game.board.geom, cl=game.players.find(p=>p.isClaude);
+  const b=allBuildings();
+  const prodByRes = (pid)=>{
+    const m={wood:0,brick:0,sheep:0,wheat:0,ore:0}; const P=playerById(pid);
+    for(const k of [...P.settlements,...P.cities]){
+      const mult = P.cities.includes(k)?2:1;
+      for(const id of (g.verts[k]?.hexes||[])){ const h=game.board.hexes[id-1]; if(h.resource!=="desert" && h.id!==game.board.robberHex) m[h.resource]+=pips(h.token)*mult; }
+    }
+    return m;
+  };
+  return {
+    you: cl.name, turn:game.turn, round:game.round,
+    sevensLive: game.round>game.config.protectRounds,
+    robberOn: (()=>{ const h=game.board.hexes[game.board.robberHex-1]; return h.resource==="desert"?"desert":RES_META[h.resource].label+"-"+h.token; })(),
+    longestRoad: game.lr.holder? {holder:playerById(game.lr.holder).name, len:game.lr.len} : null,
+    largestArmy: game.la.holder? {holder:playerById(game.la.holder).name, knights:game.la.n} : null,
+    yourHand: cl.hand,
+    yourDevCards: (cl.devCards||[]).map(d=>d.type),
+    yourPlayableDev: (cl.devCards||[]).filter(d=>d.type!=="vp" && d.boughtTurn<game.turn).map(d=>d.type),
+    yourHiddenVP: cl.vpCards,
+    yourPorts: game.board.ports.filter(p=>p.verts.some(v=>[...cl.settlements,...cl.cities].includes(v))).map(p=>p.type),
+    yourProduction: prodByRes(cl.id),
+    players: game.players.map(p=>({
+      name:p.name, isYou:p.isClaude, publicVP:publicVP(p),
+      resourceCards:p.cardCount, devCards:p.devCount, knightsPlayed:p.knightsPlayed,
+      settlements:p.settlements.map(vDesc), cities:p.cities.map(vDesc), roads:p.roads.length,
+      productionPips: prodByRes(p.id),
+    })),
+    recentLog: game.log.slice(-10).map(e=>e.text),
+  };
+}
+function legalMenu(){
+  const cl=game.players.find(p=>p.isClaude);
+  const mapK = arr => arr.map(k=>({key:k, at:vDesc(k)}));
+  const mapE = arr => arr.map(k=>({key:k, at:eDesc(k)}));
+  return {
+    buildRoad: canAffordCount(cl,COST.road)&&cl.roads.length<15 ? mapE(legalRoadEdges(cl.id)) : [],
+    buildSettlement: canAffordCount(cl,COST.settlement)&&cl.settlements.length<5 ? mapK(legalSettlementVertices(cl.id)) : [],
+    buildCity: canAffordCount(cl,COST.city)&&cl.cities.length<4 ? mapK(legalCityVertices(cl.id)) : [],
+    canBuyDev: canAffordCount(cl,COST.dev) && game.dev.deck.length>0,
+    playableDev: (cl.devCards||[]).filter(d=>d.type!=="vp"&&d.boughtTurn<game.turn).map(d=>d.type).filter(t=>t!=="knight"),
+    bankRates: portRatesFor(cl.id),
+    allRoadEdges: mapE(legalRoadEdges(cl.id)),   // for roadBuilding, may be free even if unaffordable
+  };
+}
+function turnPrompt(followup){
+  return `${STRATEGY_PRIMER}
+
+You are ${game.players.find(p=>p.isClaude).name}. It is your turn in 3-player base Catan. You have already rolled (see recentLog).${followup?" A trade you proposed was just accepted; decide any further builds/trades.":""}
+
+GAME STATE:
+${JSON.stringify(claudeStateView())}
+
+LEGAL MOVES AVAILABLE NOW (only use keys/names from here):
+${JSON.stringify(legalMenu())}
+
+Reply with ONLY minified JSON, no prose:
+{"actions":[ACTION,...],"endReason":"one short sentence"}
+Each ACTION is exactly one of:
+{"type":"buildRoad","edge":"<edge key>"}
+{"type":"buildSettlement","vertex":"<vertex key>"}
+{"type":"buildCity","vertex":"<vertex key>"}
+{"type":"buyDev"}
+{"type":"bankTrade","give":{"ore":4},"get":{"wheat":1}}   // must match your bankRates; balanced
+{"type":"yearOfPlenty","take":["wheat","ore"]}
+{"type":"monopoly","resource":"ore"}
+{"type":"roadBuilding","roads":["<edge key>","<edge key>"]}
+{"type":"proposeTrade","give":{"wood":1},"get":{"ore":1},"toPlayerName":"<name or any>","reason":"short"}
+Rules: I execute actions in order and re-check legality; skip means skipped. Buy/build only what you can pay for in sequence. Do not include a Knight action here (knights are handled before the roll). Keep it to the strongest 1-4 actions. If nothing is worth doing, return {"actions":[],"endReason":"..."}.`;
+}
+function preRollKnightPrompt(){
+  const cands = knightRobCandidates();
+  return `${STRATEGY_PRIMER}
+
+You are ${game.players.find(p=>p.isClaude).name} in 3-player base Catan, about to roll. You hold a playable Knight.
+STATE: ${JSON.stringify(claudeStateView())}
+Hexes you may move the robber to (id : description), and who has a building there you could rob:
+${JSON.stringify(hexRobInfo())}
+Playing the Knight now lets you move the robber before production and steal 1 card; it also counts toward Largest Army.
+Reply ONLY minified JSON: {"play":true|false,"moveRobberToHexId":<id>,"robPlayerName":"<name or none>","reason":"short"}`;
+}
+function robberPrompt(){
+  return `${STRATEGY_PRIMER}
+
+You are ${game.players.find(p=>p.isClaude).name}. You rolled a 7 in 3-player base Catan and must move the robber and steal.
+STATE: ${JSON.stringify(claudeStateView())}
+Hex options and robbable players there: ${JSON.stringify(hexRobInfo())}
+Reply ONLY minified JSON: {"moveRobberToHexId":<id>,"robPlayerName":"<name or none>","reason":"short"}`;
+}
+function tradeReplyPrompt(offer){
+  return `${STRATEGY_PRIMER}
+
+You are ${game.players.find(p=>p.isClaude).name} in 3-player base Catan. A human player offers you a trade.
+They will GIVE you: ${JSON.stringify(offer.give)}
+They want to RECEIVE from you: ${JSON.stringify(offer.get)}
+Offering player: ${offer.fromName}
+STATE: ${JSON.stringify(claudeStateView())}
+Only accept if it helps you more than them and doesn't push anyone toward winning. You must actually hold what they want.
+Reply ONLY minified JSON: {"decision":"accept"|"decline"|"counter","counter":{"give":{...from them...},"get":{...from you...}},"reason":"short"}`;
+}
+function hexRobInfo(){
+  const g=game.board.geom, b=allBuildings(), out=[];
+  for(let id=1;id<=19;id++){
+    if(id===game.board.robberHex) continue;
+    const h=game.board.hexes[id-1];
+    const who=new Set();
+    for(const k in g.verts){
+      if(!g.verts[k].hexes.includes(id) || !b[k]) continue;
+      const p=playerById(b[k].pid);
+      if(!p.isClaude && p.cardCount>0) who.add(p.name);
+    }
+    out.push({hexId:id, tile: h.resource==="desert"?"desert":RES_META[h.resource].label+"-"+h.token, pips:pips(h.token), robbable:[...who]});
+  }
+  return out;
+}
+function knightRobCandidates(){ return hexRobInfo().flatMap(x=>x.robbable); }
+function claudePlayableKnight(){
+  const cl=game.players.find(p=>p.isClaude);
+  return (cl.devCards||[]).some(d=>d.type==="knight" && d.boughtTurn<game.turn) && !cl.playedDevThisTurn;
+}
+function cleanMap(m){ const o={wood:0,brick:0,sheep:0,wheat:0,ore:0}; if(m) for(const r of RES) o[r]=Math.max(0,Math.round(+m[r]||0)); return o; }
+
+/* ---- setup ---- */
+async function claudeSetupPlace(){
+  if(ui.busy || game.phase!=="setup" || game.setup.pickStarter) return;
+  const pid=game.setup.order[game.setup.step];
+  if(!playerById(pid) || !playerById(pid).isClaude) return;
+  ui.busy=true; render();
+  try{
+    const legalV = legalSettlementVertices(pid,{setup:true});
+    const prompt = `${STRATEGY_PRIMER}
+
+You are ${playerById(pid).name} placing your ${game.setup.step<3?"FIRST":"SECOND"} settlement + road in 3-player base Catan setup.${game.setup.step>=3?" This settlement grants starting resources from its adjacent tiles.":""}
+BOARD: ${JSON.stringify(game.board.hexes.map(h=>({id:h.id, tile:h.resource==="desert"?"desert":RES_META[h.resource].label, token:h.token, pips:pips(h.token)})))}
+PORTS: ${JSON.stringify(game.board.ports.map(p=>({type:p.type, at:p.verts.map(vDesc)})))}
+EXISTING PLACEMENTS: ${JSON.stringify(game.players.map(p=>({name:p.name, settlements:p.settlements.map(vDesc), roads:p.roads.length})))}
+LEGAL SETTLEMENT SPOTS (key : tiles it touches):
+${JSON.stringify(legalV.map(k=>({key:k, touches:vDesc(k), adjacentRoadEdges:game.board.geom.verts[k].adjEdges})))}
+Reply ONLY minified JSON: {"vertex":"<key from the list>","road":"<one adjacentRoadEdges key of that vertex>","reason":"short"}`;
+    const res = await askJSON(prompt,"complex");
+    let v = legalV.includes(res?.vertex) ? res.vertex : legalV[bestSetupVertex(legalV)];
+    placeSetupSettlement(pid, v);
+    const legalR = legalRoadEdges(pid,{setup:true,fromVertex:v});
+    let e = legalR.includes(res?.road) ? res.road : legalR[0];
+    if(res?.reason) logLine("Claude: "+String(res.reason).slice(0,160),"claude");
+    placeSetupRoad(pid, e);
+  }catch(err){
+    ui.busy=false;
+    logLine("Claude setup failed ("+(err.code||err.message||err)+"). Placing a reasonable spot.","claude");
+    const legalV = legalSettlementVertices(pid,{setup:true});
+    const v=legalV[bestSetupVertex(legalV)];
+    placeSetupSettlement(pid,v);
+    const legalR=legalRoadEdges(pid,{setup:true,fromVertex:v});
+    placeSetupRoad(pid, legalR[0]);
+  }finally{ ui.busy=false; }
+}
+function bestSetupVertex(keys){
+  let bi=0,bs=-1;
+  keys.forEach((k,i)=>{
+    let s=0; const seen=new Set();
+    for(const id of game.board.geom.verts[k].hexes){ const h=game.board.hexes[id-1]; if(h.resource==="desert")continue; s+=pips(h.token); seen.add(h.resource); }
+    s += seen.size*1.5;
+    if(s>bs){bs=s;bi=i;}
+  });
+  return bi;
+}
+
+/* ---- full turn ---- */
+async function runClaudeTurn(){
+  // once Claude has rolled this turn, this cannot start again — use resumeClaudeTurn()
+  if(!game || game.phase!=="play" || !cur().isClaude || ui.busy || game.pending || game.pendingRoll!=null) return;
+  ui.busy=true; ui.cancelClaude=false; ui.claudeResume=()=>{ claudeMainPhase(); };
+  render();
+  try{
+    if(claudePlayableKnight()){
+      const dec = await askJSON(preRollKnightPrompt(),"default").catch(()=>null);
+      if(dec && dec.play===true){ await claudePlayKnight(dec); }
+      if(ui.cancelClaude){ ui.busy=false; commit(); return; }
+      if(game.pending && game.pending.step==="stealReveal"){ ui.claudeResume=claudeRollAndContinue; ui.busy=false; render(); return; }
+    }
+    await claudeRollAndContinue();
+  }catch(err){
+    ui.busy=false;
+    logLine("Claude's turn was interrupted ("+(err.code||err.message||err)+"). Use “Resume Claude's turn”.","claude");
+    commit();
+  }
+}
+async function resumeClaudeTurn(){
+  if(!game || game.phase!=="play" || !cur().isClaude || ui.busy || game.pending) return;
+  ui.busy=true; ui.cancelClaude=false; ui.claudeResume=()=>{ claudeMainPhase(); };
+  render();
+  try{ await claudeRollAndContinue(); }
+  catch(err){
+    ui.busy=false;
+    logLine("Claude's turn was interrupted again ("+(err.code||err.message||err)+"). Use “Resume Claude's turn” or “End Claude's turn”.","claude");
+    commit();
+  }
+}
+async function claudeRollAndContinue(){
+  ui.busy=true; render();
+  if(game.pendingRoll==null){
+    let n;
+    for(let tries=0; tries<25; tries++){
+      n=(rint(6)+1)+(rint(6)+1);
+      game.rng.log.push({kind:"roll",n});
+      if(!(n===7 && game.round<=game.config.protectRounds)) break;
+      logLine("Claude rolled 7 — rolling again (house rule).","claude");
+    }
+    resolveRoll(n,true);
+    if(game.pendingRoll==null){ ui.busy=false; render(); return; } // safety: still a protected 7
+  }
+  if(game.pending && game.pending.type==="robber"){
+    if(game.pending.discards.some(d=>!d.done)){ ui.busy=false; render(); return; }
+    ui.claudeResume=null;
+    await claudeRobberDecision();
+    if(game.pending && game.pending.step==="stealReveal"){ ui.claudeResume=()=>{ claudeMainPhase(); }; ui.busy=false; render(); return; }
+    game.pending=null;
+  }
+  await claudeMainPhase();
+}
+async function claudePlayKnight(dec){
+  const cl=game.players.find(p=>p.isClaude);
+  const di=(cl.devCards||[]).findIndex(d=>d.type==="knight"&&d.boughtTurn<game.turn);
+  if(di<0) return;
+  cl.devCards.splice(di,1); cl.devCount=Math.max(0,cl.devCount-1);
+  cl.knightsPlayed++; cl.playedDevThisTurn=true;
+  logLine("Claude plays a Knight before rolling.","claude");
+  updateLargestArmy();
+  game.pending={type:"robber", mover:cl.id, discards:[], step:"move"};
+  await resolveClaudeRobber(dec);
+}
+async function claudeRobberDecision(){
+  try{ const dec = await askJSON(robberPrompt(),"default"); await resolveClaudeRobber(dec); }
+  catch(e){ await resolveClaudeRobber(null); }
+}
+async function resolveClaudeRobber(dec){
+  const cl=game.players.find(p=>p.isClaude);
+  let hex = (dec && +dec.moveRobberToHexId>=1 && +dec.moveRobberToHexId<=19 && +dec.moveRobberToHexId!==game.board.robberHex) ? +dec.moveRobberToHexId : null;
+  if(hex==null){
+    // fallback: highest-pip tile touched by a leading opponent
+    const info=hexRobInfo().filter(x=>x.robbable.length).sort((a,b)=>b.pips-a.pips);
+    hex = info[0]? info[0].hexId : hexRobInfo().sort((a,b)=>b.pips-a.pips)[0].hexId;
+  }
+  moveRobber(hex);
+  if(dec?.reason) logLine("Claude: "+String(dec.reason).slice(0,160),"claude");
+  const cands=game.pending.stealCandidates||[];
+  let target = cands.find(pid=>playerById(pid).name===(dec&&dec.robPlayerName));
+  if(!target && cands.length){
+    // rob the highest publicVP, then most cards
+    target = cands.slice().sort((a,b)=> publicVP(playerById(b))-publicVP(playerById(a)) || playerById(b).cardCount-playerById(a).cardCount)[0];
+  }
+  doSteal(target || "none");
+}
+
+async function claudeMainPhase(){
+  ui.busy=true; render();
+  let res;
+  try{ res = await askJSON(turnPrompt(false),"complex"); }
+  catch(err){ ui.busy=false; logLine("Claude's move request failed ("+(err.code||err.message||err)+"). Retry with the button.","claude"); commit(); return; }
+  const actions = Array.isArray(res && res.actions) ? res.actions : [];
+  const offers=[];
+  for(const a of actions){
+    if(ui.cancelClaude) break;
+    if(a && a.type==="proposeTrade"){ offers.push({give:cleanMap(a.give), get:cleanMap(a.get), to:a.toPlayerName||"any", reason:a.reason||""}); continue; }
+    let r2; try{ r2=applyClaudeAction(a); }catch(e){}
+    if(r2==="PAUSE"){ ui.busy=false; commit(); return; }   // e.g. Monopoly: humans enter amounts, then ui.claudeResume re-runs this
+    if(game.phase==="over"){ ui.busy=false; commit(); return; }
+  }
+  if(res && res.endReason) logLine("Claude: "+String(res.endReason).slice(0,180),"claude");
+  ui.busy=false;
+  if(offers.length){ game.pending={type:"claudeOffers", offers, anyAccepted:false}; commit(); return; }
+  endTurn();
+}
+function afterClaudeOffers(){
+  const acc = game.pending===null ? ui._offersAccepted : false;
+  ui._offersAccepted=false;
+  if(acc) claudeMainPhase(); else endTurn();
+}
+function acceptClaudeOffer(i,hid){
+  const o=game.pending.offers[i]; if(!o) return;
+  const cl=game.players.find(p=>p.isClaude), h=playerById(hid);
+  if(!RES.every(r=>cl.hand[r]>=o.give[r])){ flash("Claude no longer holds that — offer withdrawn."); game.pending.offers.splice(i,1); if(!game.pending.offers.length){game.pending=null;afterClaudeOffers();}else commit(); return; }
+  if(sum(o.get)>h.cardCount){ flash(`${h.name} doesn't have those cards.`); return; }
+  for(const r of RES){ cl.hand[r]-=o.give[r]; cl.hand[r]+=o.get[r]; }
+  cl.cardCount=sum(cl.hand);
+  h.cardCount += sum(o.give) - sum(o.get);
+  logLine(`${h.name} accepts Claude's trade: Claude gives ${RES.filter(r=>o.give[r]).map(r=>o.give[r]+" "+RES_META[r].label).join(", ")||"nothing"}, gets ${RES.filter(r=>o.get[r]).map(r=>o.get[r]+" "+RES_META[r].label).join(", ")||"nothing"}.`,"claude");
+  ui._offersAccepted=true;
+  game.pending.offers.splice(i,1);
+  if(!game.pending.offers.length){ game.pending=null; afterClaudeOffers(); }
+  else commit();
+}
+
+/* ---- execute one planned action (very defensive) ---- */
+function applyClaudeAction(a){
+  if(!a || !a.type) return;
+  const cl=game.players.find(p=>p.isClaude);
+  switch(a.type){
+    case "buildRoad":
+      if(legalRoadEdges(cl.id).includes(a.edge) && canAffordCount(cl,COST.road) && cl.roads.length<15) placeRoad(cl.id,a.edge,false);
+      else logLine("Claude wanted a road it couldn't place — skipped.","claude");
+      break;
+    case "buildSettlement":
+      if(legalSettlementVertices(cl.id).includes(a.vertex) && canAffordCount(cl,COST.settlement) && cl.settlements.length<5) placeSettlement(cl.id,a.vertex);
+      else logLine("Claude wanted a settlement it couldn't place — skipped.","claude");
+      break;
+    case "buildCity":
+      if(cl.settlements.includes(a.vertex) && canAffordCount(cl,COST.city) && cl.cities.length<4) placeCity(cl.id,a.vertex);
+      else logLine("Claude wanted a city it couldn't build — skipped.","claude");
+      break;
+    case "buyDev":
+      if(canAffordCount(cl,COST.dev) && game.dev.deck.length){
+        payCost(cl,COST.dev);
+        const t=game.dev.deck.shift();
+        cl.devCards.push({type:t, boughtTurn:game.turn});
+        if(t==="vp") cl.vpCards++;
+        cl.devCount=cl.devCards.length;
+        game.rng.log.push({kind:"devdraw"});
+        logLine("Claude buys a development card.","claude");
+        checkWinFor(cl);
+      } else logLine("Claude wanted to buy a dev card — couldn't.","claude");
+      break;
+    case "bankTrade": {
+      const give=cleanMap(a.give), get=cleanMap(a.get), rates=portRatesFor(cl.id);
+      let cost=0, ok=true;
+      for(const r of RES){ if(give[r]%rates[r]!==0) ok=false; cost+=give[r]/rates[r]; }
+      if(ok && cost>0 && cost===sum(get) && RES.every(r=>cl.hand[r]>=give[r])){
+        for(const r of RES){ cl.hand[r]-=give[r]; cl.hand[r]+=get[r]; }
+        cl.cardCount=sum(cl.hand);
+        logLine(`Claude trades ${RES.filter(r=>give[r]).map(r=>give[r]+" "+RES_META[r].label).join(", ")} → ${RES.filter(r=>get[r]).map(r=>get[r]+" "+RES_META[r].label).join(", ")} with the bank.`,"claude");
+      } else logLine("Claude proposed an invalid bank trade — skipped.","claude");
+      break;
+    }
+    case "yearOfPlenty": {
+      if(cl.playedDevThisTurn){ logLine("Claude already played a dev card — YoP skipped.","claude"); break; }
+      const di=(cl.devCards||[]).findIndex(d=>d.type==="plenty"&&d.boughtTurn<game.turn);
+      if(di<0){ logLine("Claude has no Year of Plenty — skipped.","claude"); break; }
+      const take=(Array.isArray(a.take)?a.take:[]).filter(r=>RES.includes(r)).slice(0,2);
+      while(take.length<2) take.push("wheat");
+      for(const r of take){ cl.hand[r]++; }
+      cl.cardCount=sum(cl.hand);
+      cl.devCards.splice(di,1); cl.devCount=cl.devCards.length; cl.playedDevThisTurn=true;
+      logLine(`Claude plays Year of Plenty (+${take.map(r=>RES_META[r].label).join(", +")}).`,"claude");
+      break;
+    }
+    case "monopoly": {
+      if(cl.playedDevThisTurn){ logLine("Claude already played a dev card — Monopoly skipped.","claude"); break; }
+      if(!(cl.devCards||[]).some(d=>d.type==="mono"&&d.boughtTurn<game.turn) || !RES.includes(a.resource)){
+        logLine("Claude couldn't play Monopoly — skipped.","claude"); break;
+      }
+      logLine(`Claude plays Monopoly on ${RES_META[a.resource].label} — enter what each player hands over.`,"claude");
+      if(startMonopoly(cl.id, a.resource)) return "PAUSE";
+      break;
+    }
+    case "roadBuilding": {
+      if(cl.playedDevThisTurn){ logLine("Claude already played a dev card — Road Building skipped.","claude"); break; }
+      const di=(cl.devCards||[]).findIndex(d=>d.type==="road"&&d.boughtTurn<game.turn);
+      if(di<0){ logLine("Claude has no Road Building — skipped.","claude"); break; }
+      cl.devCards.splice(di,1); cl.devCount=cl.devCards.length; cl.playedDevThisTurn=true;
+      logLine("Claude plays Road Building.","claude");
+      const want=(Array.isArray(a.roads)?a.roads:[]).slice(0,2);
+      for(const ek of want){ if(legalRoadEdges(cl.id).includes(ek) && cl.roads.length<15){ cl.roads.push(ek); logLine("Claude builds a free road.","claude"); } }
+      recomputeAll(); checkWinFor(cl);
+      break;
+    }
+    default: logLine("Claude sent an unknown action ("+a.type+") — ignored.","claude");
+  }
+}
+
+/* ---- human → Claude trade ---- */
+async function sendTradeToClaude(){
+  const c=cur();
+  const give=cleanMap(draft("tc-give")), get=cleanMap(draft("tc-get"));
+  if(sum(give)===0 && sum(get)===0){ flash("Set some cards to trade."); return; }
+  if(sum(give)>c.cardCount){ flash("You don't have that many cards."); return; }
+  const cl=game.players.find(p=>p.isClaude);
+  ui.busy=true; render();
+  try{
+    const offer={give, get, fromName:c.name};
+    const res=await askJSON(tradeReplyPrompt(offer),"default");
+    ui.busy=false;
+    const holds = RES.every(r=>cl.hand[r]>=get[r]);
+    if(res.decision==="accept" && holds){
+      ui.tradeResult={ headline:`Claude accepts. You give ${fmtMap(give)}, receive ${fmtMap(get)}.`, reason:res.reason, apply:()=>{
+        for(const r of RES){ cl.hand[r]+=give[r]; cl.hand[r]-=get[r]; }
+        cl.cardCount=sum(cl.hand);
+        c.cardCount += sum(get) - sum(give);
+        logLine(`${c.name} ↔ Claude: ${c.name} gives ${fmtMap(give)}, gets ${fmtMap(get)}.`,"claude");
+      }};
+    } else if(res.decision==="counter" && res.counter){
+      const cg=cleanMap(res.counter.give), cget=cleanMap(res.counter.get); // from THEM(=human) give / from YOU(=claude) get... per prompt: counter.give = from them, counter.get = from you(claude)
+      const holds2 = RES.every(r=>cl.hand[r]>=cget[r]);
+      ui.tradeResult={ headline:`Claude counters: you give ${fmtMap(cg)}, receive ${fmtMap(cget)}.`, reason:res.reason,
+        apply: holds2 && sum(cg)<=c.cardCount ? ()=>{
+          for(const r of RES){ cl.hand[r]+=cg[r]; cl.hand[r]-=cget[r]; }
+          cl.cardCount=sum(cl.hand);
+          c.cardCount += sum(cget) - sum(cg);
+          logLine(`${c.name} ↔ Claude (counter): ${c.name} gives ${fmtMap(cg)}, gets ${fmtMap(cget)}.`,"claude");
+        } : null };
+      if(!ui.tradeResult.apply) ui.tradeResult.headline += " (can't be completed with current cards)";
+    } else {
+      ui.tradeResult={ headline: res.decision==="accept" ? "Claude accepted but doesn't hold those cards." : "Claude declines.", reason:res.reason, apply:null };
+    }
+  }catch(err){
+    ui.busy=false;
+    ui.tradeResult={ headline:"Couldn't reach Claude ("+(err.code||err.message||err)+").", reason:"", apply:null };
+  }
+  commit();
+}
+function fmtMap(m){ return RES.filter(r=>m[r]).map(r=>m[r]+" "+RES_META[r].label).join(", ")||"nothing"; }
+
+/* ---- autopilot hooks ---- */
+function robberAutopilot(){
+  if(!game || game.phase!=="play" || ui.busy) return;
+  const pd=game.pending;
+  if(pd && pd.type==="robber" && pd.step==="move" && cur().isClaude && !ui._robberRunning && sampleFn!==null && pd.discards.every(d=>d.done)){
+    ui._robberRunning=true; ui.busy=true;
+    Promise.resolve().then(()=>claudeRobberDecision()).finally(()=>{ ui._robberRunning=false; });
+  }
+}
+function resumeAutopilot(){
+  if(!game) return;
+  if(game.phase==="setup"){
+    if(game.setup.pickStarter) return;
+    const pid=game.setup.order[game.setup.step];
+    if(playerById(pid) && playerById(pid).isClaude && sampleFn!==null && !ui.busy) setTimeout(claudeSetupPlace,300);
+    else if(!ui.pick) setupAutoPick();
+  } else if(game.phase==="play" && cur().isClaude && !ui.busy && !game.pending && game.pendingRoll==null && !game.isExample && sampleFn!==null){
+    setTimeout(runClaudeTurn,300);
+  }
+}
+
+/* ============================================================ INIT */
+const THEME_KEY="catan-third-hand:theme";
+function applyTheme(t){
+  if(t==="light"||t==="dark") document.documentElement.setAttribute("data-theme",t);
+  else document.documentElement.removeAttribute("data-theme");
+}
+function initTheme(){
+  let t=""; try{ t=localStorage.getItem(THEME_KEY)||""; }catch(e){}
+  applyTheme(t);
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute("data-theme");
+  const mqDark=window.matchMedia && window.matchMedia("(prefers-color-scheme:dark)").matches;
+  let next;
+  if(!cur) next = mqDark ? "light" : "dark";
+  else if(cur==="dark") next="light";
+  else next="dark";
+  applyTheme(next);
+  try{ localStorage.setItem(THEME_KEY,next); }catch(e){}
+}
+async function doExport(){
+  const c=clone(game); if(c.board) c.board.geom=null;
+  const json=JSON.stringify(c,null,2);
+  const name="catan-third-hand-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"-")+".json";
+  if(downloadsFn===undefined){ try{ downloadsFn = window.claude&&claude.use ? await claude.use("downloads") : null; }catch(e){ downloadsFn=null; } }
+  if(downloadsFn){
+    try{ await downloadsFn.save({filename:name, data:json}); logLine("Game exported."); }
+    catch(e){ if(e.code!=="declined") logLine("Export failed ("+e.code+")."); }
+  }else{
+    try{ await navigator.clipboard.writeText(json); logLine("No download available here — game JSON copied to clipboard."); }
+    catch(e){ logLine("Couldn't export in this view."); }
+  }
+  render();
+}
+function doImport(file){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    try{
+      const c=JSON.parse(fr.result);
+      if(!c || !c.board) throw new Error("not a save file");
+      game=c; ui={}; buildGeometry(); resolvePorts();
+      logLine("Game imported.","big");
+      commit(); resumeAutopilot();
+    }catch(e){
+      ui.importErr="That file isn't a valid Catan Third Hand save.";
+      render();
+    }
+  };
+  fr.readAsText(file);
+}
+
+let _inited=false;
+async function init(){
+  if(_inited) return; _inited=true;
+  try{
+    initTheme();
+    const bind=(id,fn,ev="click")=>{ const n=$(id); if(n) n["on"+ev]=fn; };
+    bind("#btn-theme",toggleTheme);
+    bind("#btn-export",doExport);
+    bind("#btn-new",startConfig);
+    bind("#btn-import",()=>$("#file-import").click());
+    bind("#file-import",e=>{ if(e.target.files[0]) doImport(e.target.files[0]); e.target.value=""; },"change");
+
+    if(!load()) seedExampleGame();
+    render();
+    getSample().then(()=>{ render(); resumeAutopilot(); }).catch(()=>{});
+  }catch(err){
+    const a=$("#app");
+    if(a) a.innerHTML='<pre style="white-space:pre-wrap;color:#b23b2e;background:#fff;padding:16px;border-radius:8px;font:12px/1.5 ui-monospace,monospace">Startup error:\n'+String(err&&err.message||err)+'\n\n'+String(err&&err.stack||'')+'</pre>';
+  }
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init);
+else init();
+</script>
