@@ -349,7 +349,8 @@ function hexCorners(id){
 const vkey = (x,y)=> Math.round(x)+","+Math.round(y);
 
 /* Build verts / edges / adjacency + resolve ports. Attaches to game.board. */
-function buildGeometry(){
+function buildGeometry(){ game.board.geom=computeGeom(); resolvePorts(); }
+function computeGeom(){
   const verts={}, edges={};
   for(let id=1; id<=19; id++){
     const cs = hexCorners(id);
@@ -395,11 +396,10 @@ function buildGeometry(){
   let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
   for(const k in verts){ const v=verts[k]; minX=Math.min(minX,v.x); minY=Math.min(minY,v.y); maxX=Math.max(maxX,v.x); maxY=Math.max(maxY,v.y); }
   const pad=48;
-  game.board.geom = {
+  return {
     verts, edges, perim,
     view:{x:minX-pad, y:minY-pad, w:(maxX-minX)+pad*2, h:(maxY-minY)+pad*2, cx:(minX+maxX)/2, cy:(minY+maxY)/2},
   };
-  resolvePorts();
 }
 function resolvePorts(){
   const g=game.board.geom;
@@ -408,8 +408,8 @@ function resolvePorts(){
     p.verts = e? e.v.slice() : [];
   }
 }
-function standardPorts(){
-  const g=game.board.geom, perim=g.perim, out=[];
+function standardPorts(g=game.board.geom){
+  const perim=g.perim, out=[];
   if(!perim.length) return out;
   const step = Math.max(2, Math.floor(perim.length/9));
   for(let i=0;i<PORT_TYPES.length;i++){
@@ -484,7 +484,7 @@ function newGame(cfg){
   };
   undoStack=[];
   buildGeometry();
-  game.board.ports = (cfg?.ports==="none") ? [] : standardPorts();
+  game.board.ports = (cfg?.ports==="none") ? [] : (cfg?.ports==="custom" ? (cfg.portList||[]).map(x=>({edge:x.edge,type:x.type})) : standardPorts());
   resolvePorts();
   game.dev.initialOrder = freshDevDeck();
   game.dev.deck = game.dev.initialOrder.slice();
@@ -1278,7 +1278,7 @@ function renderConfig(){
       <select data-cfg="claudeIdx">${[0,1,2].map(i=>`<option value="${i}" ${c.claudeIdx===i?"selected":""}>Seat ${i+1} — ${esc(c.names[i])}</option>`).join("")}</select></div>
     <div class="inline">
       <div class="field" style="flex:1"><label>Disable 7s for the first N rounds</label><input type="number" min="0" max="5" data-cfg="protectRounds" value="${c.protectRounds}"></div>
-      <div class="field" style="flex:1"><label>Ports</label><select data-cfg="ports"><option value="standard" ${c.ports==="standard"?"selected":""}>Standard (auto-placed)</option><option value="none" ${c.ports==="none"?"selected":""}>None</option></select></div>
+      <div class="field" style="flex:1"><label>Ports</label><select data-cfg="ports"><option value="standard" ${c.ports==="standard"?"selected":""}>Standard (auto-placed)</option><option value="custom" ${c.ports==="custom"?"selected":""}>Custom — match my board</option><option value="none" ${c.ports==="none"?"selected":""}>None</option></select></div>
     </div>
     <div class="field"><label>Terrain</label>
       <div class="inline">
@@ -1299,6 +1299,7 @@ function renderConfig(){
       </div>
       ${c.tokenMode==="spiral"?`<p class="hint" style="margin-top:6px">Numbers update live: A–R = 5,2,6,3,8,10,9,12,11,4,8,10,9,4,5,6,3,11, laid around the outer ring, then the inner ring, then centre — skipping the desert. Click a hex to move the spiral start; toggle the direction above. Tweak any hex by hand after.</p>`:""}
     </div>
+    ${c.ports==="custom"?`<p class="hint" style="margin:6px 0 2px">Harbours: click a coast edge on the board to cycle it — none → 3:1 → wood → brick → sheep → wheat → ore → none. Set them to match your physical frame (${(c.portList||[]).length} placed; the standard set is nine: four 3:1 and one 2:1 for each resource).</p>`:""}
     <div class="board-frame" style="max-width:520px">${renderConfigBoard()}</div>
     <button class="btn primary" style="width:100%;margin-top:12px" data-act="cfg-start">Start setup →</button>
     <p class="hint" style="margin-top:8px">Standard base-game mix: 4 wood · 3 brick · 4 sheep · 4 wheat · 3 ore · 1 desert. Tokens 2–12 (two of each except 2 and 12).</p>
@@ -1310,7 +1311,7 @@ function renderConfigBoard(){
   // temporary geometry just for drawing
   const tmp=[]; let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
   for(let id=1;id<=19;id++){ const cs=hexCorners(id); for(const [x,y] of cs){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);} }
-  const pad=20;
+  const pad=c.ports==="custom"?40:20;
   let s=`<svg class="board" viewBox="${minX-pad} ${minY-pad} ${maxX-minX+pad*2} ${maxY-minY+pad*2}">`;
   s+=`<rect x="${minX-pad}" y="${minY-pad}" width="${maxX-minX+pad*2}" height="${maxY-minY+pad*2}" rx="10" fill="var(--sea)"></rect>`;
   for(let id=1;id<=19;id++){
@@ -1320,6 +1321,25 @@ function renderConfigBoard(){
     s+=`<polygon class="hit" data-kind="cfg-hex" data-key="${id}" points="${pts}" fill="${HEXFILL[h.r]}" stroke="${isStart?'var(--accent)':'rgba(0,0,0,.25)'}" stroke-width="${isStart?4:1.5}" style="cursor:pointer;fill-opacity:1"></polygon>`;
     if(h.t) s+=`<circle cx="${cx}" cy="${cy}" r="13" fill="var(--token)"></circle><text class="tok-num" x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle" font-size="13" fill="${h.t===6||h.t===8?'var(--red-num)':'var(--token-ink)'}">${h.t}</text>`;
     else s+=`<text x="${cx}" y="${cy+3}" text-anchor="middle" font-size="10" fill="rgba(0,0,0,.5)">desert</text>`;
+  }
+  if(c.ports==="custom"){
+    const g=computeGeom(), pl=c.portList||[];
+    for(const ek of g.perim){
+      const e=g.edges[ek], a=g.verts[e.v[0]], b=g.verts[e.v[1]], has=pl.find(x=>x.edge===ek);
+      if(!has) s+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="rgba(255,255,255,.55)" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 5"></line>`;
+    }
+    for(const x of pl){
+      const e=g.edges[x.edge]; if(!e) continue;
+      const dx=e.mx-g.view.cx, dy=e.my-g.view.cy, L=Math.hypot(dx,dy)||1;
+      const ox=e.mx+dx/L*22, oy=e.my+dy/L*22;
+      for(const vk of e.v){ const vv=g.verts[vk]; s+=`<line x1="${vv.x}" y1="${vv.y}" x2="${ox.toFixed(1)}" y2="${oy.toFixed(1)}" stroke="rgba(255,255,255,.7)" stroke-width="2"></line>`; }
+      s+=`<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="10" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"></circle>`;
+      s+=`<text x="${ox.toFixed(1)}" y="${(oy+3).toFixed(1)}" text-anchor="middle" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--ink)">${x.type==="3:1"?"3:1":x.type.slice(0,2)}</text>`;
+    }
+    for(const ek of g.perim){
+      const e=g.edges[ek], a=g.verts[e.v[0]], b=g.verts[e.v[1]];
+      s+=`<line class="hit" data-kind="cfg-edge" data-key="${ek}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="rgba(0,0,0,0.001)" stroke-width="22" stroke-linecap="round" style="cursor:pointer"></line>`;
+    }
   }
   s+=`</svg>`;
   if(ui.cfgEdit!=null){
@@ -1346,12 +1366,24 @@ function wireConfig(){
   $$("#app [data-cfg]").forEach(inp=>inp.onchange=e=>{
     const k=inp.dataset.cfg;
     ui.cfg[k] = (k==="claudeIdx"||k==="protectRounds") ? +inp.value : inp.value;
+    if(k==="ports"){
+      if(inp.value==="custom" && !(ui.cfg.portList||[]).length) ui.cfg.portList = standardPorts(computeGeom());
+      render();
+    }
   });
   const sel=$('#app [data-act-sel="cfg-tok"]');
   if(sel) sel.onchange=e=>{ ui.cfg.hexes[ui.cfgEdit-1].t=+sel.value; render(); };
 }
 function onConfigClick(e){
   const hit=e.target.closest("[data-act],[data-kind]"); if(!hit) return;
+  if(hit.dataset.kind==="cfg-edge"){
+    const ek=hit.dataset.key, order=["3:1","wood","brick","sheep","wheat","ore"];
+    const pl=ui.cfg.portList||(ui.cfg.portList=[]);
+    const i=pl.findIndex(x=>x.edge===ek);
+    if(i<0) pl.push({edge:ek,type:order[0]});
+    else { const n=order.indexOf(pl[i].type)+1; if(n>=order.length) pl.splice(i,1); else pl[i].type=order[n]; }
+    render(); return;
+  }
   if(hit.dataset.kind==="cfg-hex"){
     const id=+hit.dataset.key;
     if(ui.cfg.tokenMode==="spiral"){ ui.cfg.spiralStart=id; applyARSpiral(); }
@@ -1391,7 +1423,7 @@ function randomBoard(){
 }
 function startFromConfig(){
   const c=ui.cfg;
-  newGame({names:c.names.slice(), claudeIdx:+c.claudeIdx, protectRounds:+c.protectRounds, ports:c.ports, hexes:clone(c.hexes)});
+  newGame({names:c.names.slice(), claudeIdx:+c.claudeIdx, protectRounds:+c.protectRounds, ports:c.ports, portList:clone(c.portList||[]), hexes:clone(c.hexes)});
   game.phase="setup";
   logLine("Setup — first choose who places first.","big");
   commit();
