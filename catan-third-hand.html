@@ -898,6 +898,7 @@ function renderStatus(){
       <span class="phase-note">Place ${game.setup.phase==="settlement"?"a settlement":"a road"}${game.setup.step>=3?" · second placements grant starting resources":""}</span>
     </div>`;
   }
+  if(game.pickPlayFirst) return `<div class="statusbar"><span class="pill">Ready</span><span class="phase-note">Choose who plays first</span></div>`;
   return `<div class="statusbar">
     <span class="pill turn" style="background:${c.color}">${esc(c.name)}${c.isClaude?" · Claude":""}</span>
     <span class="pill">Turn ${game.turn}</span>
@@ -977,6 +978,14 @@ function renderAction(){
   }
   if(game.phase==="setup") return renderSetupAction();
   // play phase
+  if(game.pickPlayFirst){
+    return `<h3 style="font-size:13px;margin-bottom:6px">Who plays first?</h3>
+      <p class="hint">Roll two dice at the table — highest total goes first — then tap that player. Play continues clockwise from there.</p>
+      <div class="actions-grid">
+        ${game.players.map(p=>`<button class="btn" data-act="set-first:${p.id}"><span class="chip-color" style="background:${p.color};display:inline-block;vertical-align:middle;margin-right:6px"></span>${esc(p.name)}</button>`).join("")}
+        <button class="btn ghost" data-act="set-first:random">Pick randomly</button>
+      </div>`;
+  }
   const c=cur();
   if(ui.mono) return renderMonopoly();
   if(game.pending && game.pending.type==="robber") return renderRobber();
@@ -1008,7 +1017,7 @@ function renderAction(){
 function renderSetupAction(){
   if(game.setup.pickStarter){
     return `<h3 style="font-size:13px;margin-bottom:6px">Who places first?</h3>
-      <p class="hint">Roll one die at the table — highest goes first — then tap that player. Setup then runs clockwise, the last player places twice, and it snakes back anticlockwise.</p>
+      <p class="hint">Roll two dice at the table — highest total goes first — then tap that player. Setup then runs clockwise, the last player places twice, and it snakes back anticlockwise.</p>
       <div class="actions-grid">
         ${game.players.map(p=>`<button class="btn" data-act="set-starter:${p.id}"><span class="chip-color" style="background:${p.color};display:inline-block;vertical-align:middle;margin-right:6px"></span>${esc(p.name)}</button>`).join("")}
         <button class="btn ghost" data-act="set-starter:random">Pick randomly</button>
@@ -1364,6 +1373,7 @@ function onAppClick(e){
 
     /* setup */
     case "set-starter": chooseStarter(a1); break;
+    case "set-first": choosePlayFirst(a1); break;
     case "claude-setup": claudeSetupPlace(); break;
     case "pick-setup-settlement": {
       const pid=game.setup.order[game.setup.step];
@@ -1503,19 +1513,27 @@ function advanceSetup(){
   game.setup.phase="settlement";
   game.setup.lastSettlement=null;
   if(game.setup.step>=6){
-    game.phase="play"; game.startIdx=game.players.findIndex(p=>p.id===game.setup.order[0]); if(game.startIdx<0) game.startIdx=0;
-    game.currentIdx=game.startIdx; game.turn=1; game.round=1;
+    game.phase="play"; game.pickPlayFirst=true; game.startIdx=0;
+    game.currentIdx=0; game.turn=1; game.round=1;
     recomputeAll();
-    logLine("Setup complete. "+game.players[game.startIdx].name+" begins.","big");
+    logLine("Setup complete — roll two dice to see who plays first.","big");
   }
   commit();
   if(game.phase==="setup"){
     const pid=game.setup.order[game.setup.step];
     if(playerById(pid).isClaude && sampleFn!==null && !ui.busy) setTimeout(claudeSetupPlace,300);
     else setupAutoPick();
-  } else if(game.phase==="play" && cur().isClaude && sampleFn!==null && !game.isExample){
-    setTimeout(runClaudeTurn,400);
   }
+}
+function choosePlayFirst(sel){
+  if(!game.pickPlayFirst) return;
+  let s;
+  if(sel==="random"){ s=rint(3); logLine(`Randomly chose ${game.players[s].name} to play first.`,"rng"); }
+  else { s=game.players.findIndex(p=>p.id===sel); if(s<0) s=0; }
+  game.pickPlayFirst=false; game.startIdx=s; game.currentIdx=s; game.turn=1; game.round=1;
+  logLine(`${game.players[s].name} plays first.`,"big");
+  commit();
+  if(cur().isClaude && sampleFn!==null && !game.isExample) setTimeout(runClaudeTurn,400);
 }
 
 /* ---------------- roll resolution ---------------- */
@@ -1921,7 +1939,7 @@ function bestSetupVertex(keys){
 /* ---- full turn ---- */
 async function runClaudeTurn(){
   // once Claude has rolled this turn, this cannot start again — use resumeClaudeTurn()
-  if(!game || game.phase!=="play" || !cur().isClaude || ui.busy || game.pending || game.pendingRoll!=null) return;
+  if(!game || game.phase!=="play" || game.pickPlayFirst || !cur().isClaude || ui.busy || game.pending || game.pendingRoll!=null) return;
   ui.busy=true; ui.cancelClaude=false; ui.claudeResume=()=>{ claudeMainPhase(); };
   render();
   try{
@@ -2178,7 +2196,7 @@ function resumeAutopilot(){
     const pid=game.setup.order[game.setup.step];
     if(playerById(pid) && playerById(pid).isClaude && sampleFn!==null && !ui.busy) setTimeout(claudeSetupPlace,300);
     else if(!ui.pick) setupAutoPick();
-  } else if(game.phase==="play" && cur().isClaude && !ui.busy && !game.pending && game.pendingRoll==null && !game.isExample && sampleFn!==null){
+  } else if(game.phase==="play" && !game.pickPlayFirst && cur().isClaude && !ui.busy && !game.pending && game.pendingRoll==null && !game.isExample && sampleFn!==null){
     setTimeout(runClaudeTurn,300);
   }
 }
