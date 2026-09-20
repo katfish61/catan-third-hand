@@ -408,15 +408,16 @@ function resolvePorts(){
     p.verts = e? e.v.slice() : [];
   }
 }
+/* Harbour positions read off the physical frame: [hex id, side of that hex, type]. Hex ids run row by row from the top-left. */
+const STD_PORTS = [["1","NW","3:1"],["2","NE","sheep"],["7","NE","3:1"],["12","E","3:1"],["16","SE","brick"],
+                   ["18","SE","wood"],["17","SW","3:1"],["13","W","wheat"],["4","W","ore"]];
 function standardPorts(g=game.board.geom){
-  const perim=g.perim, out=[];
-  if(!perim.length) return out;
-  const step = Math.max(2, Math.floor(perim.length/9));
-  for(let i=0;i<PORT_TYPES.length;i++){
-    const ek = perim[(i*step) % perim.length];
-    if(ek && !out.some(o=>o.edge===ek)) out.push({edge:ek, type:PORT_TYPES[i]});
-  }
-  return out;
+  const SIDE={NE:0,E:1,SE:2,SW:3,W:4,NW:5};
+  return STD_PORTS.map(([id,side,type])=>{
+    const cs=hexCorners(+id), k=SIDE[side];
+    const a=vkey(...cs[k]), b=vkey(...cs[(k+1)%6]);
+    return {edge:[a,b].sort().join("|"), type};
+  }).filter(p=>g.edges[p.edge]);
 }
 /* description of a vertex / edge in table language */
 function vDesc(k){
@@ -1278,7 +1279,7 @@ function renderConfig(){
       <select data-cfg="claudeIdx">${[0,1,2].map(i=>`<option value="${i}" ${c.claudeIdx===i?"selected":""}>Seat ${i+1} — ${esc(c.names[i])}</option>`).join("")}</select></div>
     <div class="inline">
       <div class="field" style="flex:1"><label>Disable 7s for the first N rounds</label><input type="number" min="0" max="5" data-cfg="protectRounds" value="${c.protectRounds}"></div>
-      <div class="field" style="flex:1"><label>Ports</label><select data-cfg="ports"><option value="standard" ${c.ports==="standard"?"selected":""}>Standard (auto-placed)</option><option value="custom" ${c.ports==="custom"?"selected":""}>Custom — match my board</option><option value="none" ${c.ports==="none"?"selected":""}>None</option></select></div>
+      <div class="field" style="flex:1"><label>Ports</label><select data-cfg="ports"><option value="standard" ${c.ports==="standard"?"selected":""}>Standard (matches our frame)</option><option value="custom" ${c.ports==="custom"?"selected":""}>Custom — match my board</option><option value="none" ${c.ports==="none"?"selected":""}>None</option></select></div>
     </div>
     <div class="field"><label>Terrain</label>
       <div class="inline">
