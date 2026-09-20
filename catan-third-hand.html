@@ -1621,10 +1621,10 @@ function resolveRoll(n, isClaude){
 }
 
 /* ---------------- robber ---------------- */
-function startRobber(moverId){
+function startRobber(moverId,{knight=false}={}){   // a Knight moves the robber and steals — no discards (only a rolled 7 forces them)
   const discards=[];
   for(const p of game.players){
-    if(p.cardCount>7){
+    if(!knight && p.cardCount>7){
       const nn=Math.floor(p.cardCount/2);
       if(p.isClaude){
         for(let i=0;i<nn;i++){ const r=drawRandomKey(p.hand); if(r){ p.hand[r]--; } }
@@ -1751,7 +1751,7 @@ function humanPlayDev(type){
     c.knightsPlayed++; c.playedDevThisTurn=true; c.devCount=Math.max(0,c.devCount-1);
     logLine(`${c.name} plays a Knight.`);
     updateLargestArmy(); checkWinFor(c);
-    ui.sub=null; startRobber(c.id); return;
+    ui.sub=null; startRobber(c.id,{knight:true}); return;
   }
   if(type==="road"){ c.playedDevThisTurn=true; c.devCount=Math.max(0,c.devCount-1); logLine(`${c.name} plays Road Building.`); ui.sub="roadbuild"; ui.rbPlaced=0; commit(); return; }
   if(type==="plenty"){ ui.sub="yop"; clearDrafts(); commit(); return; }
