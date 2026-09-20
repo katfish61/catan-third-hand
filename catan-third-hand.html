@@ -193,6 +193,7 @@
     </div>
     <div class="head-actions">
       <button class="btn sm ghost" id="btn-theme" title="Toggle theme">Theme</button>
+      <button class="btn sm" id="btn-undo" disabled>↶ Undo</button>
       <button class="btn sm" id="btn-export">Export save</button>
       <button class="btn sm" id="btn-import">Import</button>
       <button class="btn sm danger" id="btn-new">New game</button>
@@ -481,6 +482,7 @@ function newGame(cfg){
     pendingRoll:null, pending:null,
     log:[], winner:null,
   };
+  undoStack=[];
   buildGeometry();
   game.board.ports = (cfg?.ports==="none") ? [] : standardPorts();
   resolvePorts();
@@ -556,6 +558,53 @@ function load(){
     return true;
   }catch(e){ return false; }
 }
+
+/* ---- undo: snapshot before each human action; never rewinds past Claude's random events ---- */
+let undoStack = [];
+function gameJSON(){ const g=game.board.geom; game.board.geom=null; const j=JSON.stringify(game); game.board.geom=g; return j; }
+function snapshot(label){
+  if(!game || game.phase==="config" || ui.busy) return;
+  const j=gameJSON(), top=undoStack[undoStack.length-1];
+  if(top && top.json===j) return;
+  undoStack.push({json:j, label, rng:game.rng.state});
+  if(undoStack.length>60) undoStack.shift();
+}
+function undoLast(){
+  if(!game || game.phase==="config" || ui.busy) return;
+  const now=gameJSON();
+  while(undoStack.length){
+    const top=undoStack[undoStack.length-1];
+    if(top.json===now){ undoStack.pop(); continue; }        // no-op snapshot from a view-only click
+    if(top.rng!==game.rng.state){
+      flash("Can't undo past a random event (a Claude roll, steal, discard, or random pick) — that would let the dice be re-rolled.");
+      return;
+    }
+    undoStack.pop();
+    game=JSON.parse(top.json); buildGeometry(); resolvePorts();
+    ui={};
+    logLine("Undid: "+top.label,"big");
+    commit(); resumeAutopilot();
+    return;
+  }
+}
+function updateUndoButton(){
+  const b=$("#btn-undo"); if(!b) return;
+  let top=null;
+  if(game && game.phase!=="config" && !ui.busy){
+    const now=gameJSON();
+    for(let i=undoStack.length-1;i>=0;i--){ if(undoStack[i].json!==now){ top=undoStack[i]; break; } }
+  }
+  b.disabled=!top;
+  b.title=top? "Undo: "+top.label : "Nothing to undo";
+}
+const NO_SNAP = new Set(["new","dismiss-import","reveal-deck","cancel-claude","claude-setup","claude-turn","claude-resume","claude-end",
+  "sub","sub-cancel","pick-setup-settlement","pick-setup-road","pick-robber","reveal-steal","mono-adj","tc-send",
+  "accept-offer","decline-offer","offers-done","claude-took","cancel"]);
+const SNAP_LABEL = {build:a=>"build a "+a, "buy-dev":()=>"buy dev card", "apply-roll":()=>"dice roll", "end-turn":()=>"end turn",
+  "play-dev":a=>"play "+a, "do-bank":()=>"bank trade", "do-th":()=>"player trade", "tc-apply":()=>"trade with Claude",
+  cadj:()=>"card count change", "do-yop":()=>"Year of Plenty", "do-mono":()=>"Monopoly", "mono-apply":()=>"Monopoly collection",
+  "set-starter":()=>"choice of who places first", "set-first":()=>"choice of who plays first", "pick-road-free":()=>"free road",
+  "ack-discard":()=>"discard", steal:()=>"steal", "robber-to-move":()=>"discards done", "robber-done":()=>"robber finished"};
 
 /* ---- commit: mutate → persist → render ---- */
 function commit(){ save(); render(); }
@@ -744,7 +793,7 @@ function render(){
   if(!root) return;
   root.dataset.ok="1";
   if(!game){ root.innerHTML="<p>Loading…</p>"; return; }
-  if(game.phase==="config"){ root.innerHTML=renderConfig(); wireConfig(); return; }
+  if(game.phase==="config"){ root.innerHTML=renderConfig(); wireConfig(); updateUndoButton(); return; }
   root.innerHTML = `
     ${ui.importErr? `<div class="banner warn">${esc(ui.importErr)} <button class="btn sm ghost" data-act="dismiss-import">Dismiss</button></div>`:""}
     ${game.isExample? `<div class="banner">Example game in progress — the numbers below are a sample. Press <b>&nbsp;New game&nbsp;</b> to start your own.</div>`:""}
@@ -783,6 +832,7 @@ function render(){
     </div>`;
   wireBoard();
   wirePanels();
+  updateUndoButton();
   const lg=$("#p-log"); if(lg) lg.scrollTop=lg.scrollHeight;
   if(!ui.busy) setTimeout(robberAutopilot,0);
 }
@@ -1342,6 +1392,7 @@ function wireBoard(){
   svg.onclick=e=>{
     const hit=e.target.closest(".hit[data-kind]"); if(!hit || !ui.pick) return;
     const kind=hit.dataset.kind, key=hit.dataset.key;
+    snapshot({vertex:"settlement placement", edge:"road placement", hex:"robber move"}[ui.pick.mode]||"placement");
     const cb=ui.pick.onPick; ui.pick=null;
     cb(kind,key);
   };
@@ -1365,6 +1416,7 @@ function onAppClick(e){
   const parts=(hit.dataset.act||"").split(":");
   const act=parts[0], a1=parts[1], a2=parts[2];
   const c=cur();
+  if(game && !NO_SNAP.has(act)) snapshot((SNAP_LABEL[act]||(()=>act))(a1));
   switch(act){
     case "new": startConfig(); break;
     case "dismiss-import": ui.importErr=null; render(); break;
@@ -2241,7 +2293,7 @@ function doImport(file){
     try{
       const c=JSON.parse(fr.result);
       if(!c || !c.board) throw new Error("not a save file");
-      game=c; ui={}; buildGeometry(); resolvePorts();
+      game=c; ui={}; undoStack=[]; buildGeometry(); resolvePorts();
       logLine("Game imported.","big");
       commit(); resumeAutopilot();
     }catch(e){
@@ -2261,6 +2313,7 @@ async function init(){
     bind("#btn-theme",toggleTheme);
     bind("#btn-export",doExport);
     bind("#btn-new",startConfig);
+    bind("#btn-undo",undoLast);
     bind("#btn-import",()=>$("#file-import").click());
     bind("#file-import",e=>{ if(e.target.files[0]) doImport(e.target.files[0]); e.target.value=""; },"change");
 
