@@ -1155,6 +1155,11 @@ function renderHumanMenu(){
   const canSet  = canAffordCount(c,COST.settlement) && legalSettlementVertices(c.id).length && c.settlements.length<5;
   const canCity = canAffordCount(c,COST.city) && c.settlements.length>0 && c.cities.length<4;
   const canDev  = canAffordCount(c,COST.dev);
+  const why=[];
+  if(!canRoad) why.push(!canAffordCount(c,COST.road)?"Road needs 2 cards":(c.roads.length>=15?"No roads left":"Road: no legal edge"));
+  if(!canSet)  why.push(!canAffordCount(c,COST.settlement)?"Settlement needs 4 cards":(c.settlements.length>=5?"No settlements left (upgrade one to a city)":"Settlement: no legal spot — it must touch one of your roads and be at least 2 corners from every settlement/city"));
+  if(!canCity) why.push(c.settlements.length===0?"City: no settlement to upgrade":(!canAffordCount(c,COST.city)?"City needs 5 cards":"No cities left"));
+  if(!canDev)  why.push("Dev card needs 3 cards");
   return `<p class="hint">${esc(c.name)} rolled <b>${game.pendingRoll}</b>. Build, trade and play cards, then end the turn.</p>
     <div class="actions-grid">
       <button class="btn" data-act="build:road" ${canRoad?"":"disabled"}>Road <span class="hint">(${costStr(COST.road)})</span></button>
@@ -1167,6 +1172,7 @@ function renderHumanMenu(){
       <button class="btn" data-act="sub:tradeHuman">Trade w/ player</button>
     </div>
     <button class="btn primary" style="width:100%;margin-top:10px" data-act="end-turn">End ${esc(c.name)}'s turn</button>
+    ${why.length?`<p class="hint" style="margin-top:8px">Greyed out: ${why.map(esc).join(" · ")}.</p>`:""}
     <p class="hint" style="margin-top:6px">Adjust card counts with −/+ in the scoreboard.</p>`;
 }
 function renderMonopoly(){
@@ -1192,7 +1198,7 @@ function renderTradeClaudeForm(){
     return `<h3 style="font-size:13px;margin-bottom:6px">Claude's answer</h3>
       <div class="offer"><div class="terms">${esc(tr.headline)}</div>
         ${tr.reason?`<p class="hint">“${esc(tr.reason)}”</p>`:""}
-        <div class="inline">${tr.canApply?`<button class="btn primary" data-act="tc-apply">Apply this trade</button>`:""}
+        <div class="inline">${tr.apply?`<button class="btn primary" data-act="tc-apply">Apply this trade</button>`:""}
         <button class="btn ghost" data-act="sub-cancel">Close</button></div></div>`;
   }
   return `<h3 style="font-size:13px;margin-bottom:6px">Offer a trade to Claude</h3>
