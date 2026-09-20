@@ -1061,13 +1061,15 @@ function renderAction(){
       ${sampleFn===null?`<p class="hint">Unavailable in this view — see the banner above. You can still run Claude manually.</p>`:""}`;
   }
   // human turn
+  if(game.pendingRoll==null && ui.sub) return renderHumanMenu();   // dev-card sub-panels work before the roll too
   if(game.pendingRoll==null){
     return `<div class="field"><label>Dice roll for ${esc(c.name)}</label>
       <div class="inline">
         <select id="roll-val">${Array.from({length:11},(_,i)=>i+2).map(n=>`<option value="${n}" ${n===8?"selected":""}>${n}</option>`).join("")}</select>
         <button class="btn primary" data-act="apply-roll">Apply roll</button>
       </div></div>
-      <p class="hint">Enter the total of the two dice. A 7 ${game.round<=game.config.protectRounds?"means roll again this round (house rule).":"triggers discards + the robber."}</p>`;
+      <p class="hint">Enter the total of the two dice. A 7 ${game.round<=game.config.protectRounds?"means roll again this round (house rule).":"triggers discards + the robber."}</p>
+      <button class="btn" data-act="sub:dev" ${c.devCount>0?"":"disabled"}>Play a dev card before rolling (e.g. Knight)</button>`;
   }
   return renderHumanMenu();
 }
