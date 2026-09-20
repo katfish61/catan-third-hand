@@ -600,7 +600,7 @@ function updateUndoButton(){
 }
 const NO_SNAP = new Set(["new","dismiss-import","reveal-deck","cancel-claude","claude-setup","claude-turn","claude-resume","claude-end",
   "sub","sub-cancel","pick-setup-settlement","pick-setup-road","pick-robber","reveal-steal","mono-adj","tc-send",
-  "offers-done","claude-took","cancel"]);
+  "offers-done","claude-took","cancel","ask-offer","ask-cancel"]);
 const SNAP_LABEL = {build:a=>"build a "+a, "buy-dev":()=>"buy dev card", "apply-roll":()=>"dice roll", "end-turn":()=>"end turn",
   "play-dev":a=>"play "+a, "do-bank":()=>"bank trade", "do-th":()=>"player trade", "tc-apply":()=>"trade with Claude",
   cadj:()=>"card count change", "do-yop":()=>"Year of Plenty", "do-mono":()=>"Monopoly", "mono-apply":()=>"Monopoly collection",
@@ -1258,8 +1258,12 @@ function renderClaudeOffers(){
       <div class="terms">Claude gives <b>${give}</b>, wants <b>${get}</b>${o.to&&o.to!=="any"?` from ${esc(playerById(o.to)?.name||o.to)}`:""}.</div>
       ${o.reason?`<p class="hint">“${esc(o.reason)}”</p>`:""}
       <div class="inline">
-        ${humans.map(h=>`<button class="btn sm" data-act="accept-offer:${i}:${h.id}">Accept as ${esc(h.name)}</button>`).join("")}
-        <button class="btn sm ghost" data-act="decline-offer:${i}">Decline</button>
+        ${ui.confirmOffer && ui.confirmOffer.i===i ? (()=>{
+          const h=playerById(ui.confirmOffer.hid);
+          return `<div style="width:100%"><p class="hint" style="margin:0 0 8px"><b>Accept as ${esc(h.name)}?</b> ${esc(h.name)} gives <b>${get}</b> and receives <b>${give}</b>.</p>
+            <button class="btn sm primary" data-act="accept-offer:${i}:${h.id}">Yes, accept</button>
+            <button class="btn sm ghost" data-act="ask-cancel">Back</button></div>`; })()
+        : humans.map(h=>`<button class="btn sm" data-act="ask-offer:${i}:${h.id}">Accept as ${esc(h.name)}</button>`).join("") + `<button class="btn sm ghost" data-act="decline-offer:${i}">Decline</button>`}
       </div></div>`;
   }).join("");
   return `<h3 style="font-size:13px;margin-bottom:6px">Claude proposes a trade</h3>${rows}
@@ -1535,8 +1539,10 @@ function onAppClick(e){
     case "robber-done": finishRobber(); break;
 
     /* claude offers */
-    case "accept-offer": acceptClaudeOffer(+a1,a2); break;
-    case "decline-offer": { game.pending.offers.splice(+a1,1); if(!game.pending.offers.length){ game.pending=null; afterClaudeOffers(); } else commit(); break; }
+    case "ask-offer": ui.confirmOffer={i:+a1,hid:a2}; commit(); break;
+    case "ask-cancel": ui.confirmOffer=null; commit(); break;
+    case "accept-offer": ui.confirmOffer=null; acceptClaudeOffer(+a1,a2); break;
+    case "decline-offer": { ui.confirmOffer=null; game.pending.offers.splice(+a1,1); if(!game.pending.offers.length){ game.pending=null; afterClaudeOffers(); } else commit(); break; }
     case "offers-done": game.pending=null; afterClaudeOffers(); break;
 
     case "cancel": break;
@@ -1913,10 +1919,16 @@ function claudeStateView(){
     recentLog: game.log.slice(-10).map(e=>e.text),
   };
 }
+function spotStatus(v){
+  const b=allBuildings(), g=game.board.geom;
+  if(b[v]) return `OCCUPIED by ${playerById(b[v].pid).name} (${b[v].kind}) — not a settlement spot`;
+  if(g.verts[v].adj.some(n=>b[n])) return "blocked: too close to a building — cannot be settled";
+  return "open (settleable)";
+}
 function legalMenu(){
   const cl=game.players.find(p=>p.isClaude);
   const mapK = arr => arr.map(k=>({key:k, at:vDesc(k)}));
-  const mapE = arr => arr.map(k=>({key:k, at:eDesc(k)}));
+  const mapE = arr => arr.map(k=>({key:k, at:eDesc(k), ends:game.board.geom.edges[k].v.map(v=>({at:vDesc(v), status:spotStatus(v)}))}));
   return {
     buildRoad: canAffordCount(cl,COST.road)&&cl.roads.length<15 ? mapE(legalRoadEdges(cl.id)) : [],
     buildSettlement: canAffordCount(cl,COST.settlement)&&cl.settlements.length<5 ? mapK(legalSettlementVertices(cl.id)) : [],
@@ -1950,6 +1962,7 @@ Each ACTION is exactly one of:
 {"type":"monopoly","resource":"ore"}
 {"type":"roadBuilding","roads":["<edge key>","<edge key>"]}
 {"type":"proposeTrade","give":{"wood":1},"get":{"ore":1},"toPlayerName":"<name or any>","reason":"short"}
+Roads: each road edge lists its two ends (the "ends" field) with a status. Only treat an end as a settlement spot if its status is "open (settleable)" — never call an OCCUPIED or blocked corner a settlement spot. Build a road toward an open end (or deliberately for Longest Road / to cut an opponent off, and say so).
 Rules: I execute actions in order and re-check legality; skip means skipped. Buy/build only what you can pay for in sequence. Do not include a Knight action here (knights are handled before the roll). Keep it to the strongest 1-4 actions. If nothing is worth doing, return {"actions":[],"endReason":"..."}.`;
 }
 function preRollKnightPrompt(){
