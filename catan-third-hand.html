@@ -261,8 +261,12 @@ function spiralOrder(startId, dir){
 
 const STRATEGY_PRIMER = `You are playing 3-player BASE Catan (no expansions) to 10 victory points. Play to win; do not kingmake.
 - Opening: maximize total pip count and resource diversity across your two settlements. Prioritize 6/8 tiles and covering wood+brick+wheat+sheep (expansion) or ore+wheat (city/dev engine). Take a 2:1 port only if you already produce that resource well.
-- Value ore+wheat: cities double output and fuel dev cards.
-- Buy dev cards when resource-rich and short of good build spots. Knights reposition the robber and chase Largest Army.
+- EXPANSION WINS 3-player games. Every settlement is +1 VP AND a new production source, and it takes a spot an opponent wants. With an open spot available, a settlement is almost always better than a dev card, a city, or holding cards. You have 5 settlements — fill them; upgrade to cities once spots run out or you're stuck.
+- Build roads with a purpose: toward the best open spot in settlementPlan. A spot with roadsNeeded 1 means "build the road now, settle next turn"; roadsNeeded 0 means settle as soon as you can pay. Do not wander, and never build toward an occupied/blocked corner.
+- If you are 1-2 cards short of a settlement (see missingForSettlement), close the gap THIS turn: bank/port trade or propose a trade. Do not spend those cards elsewhere.
+- Spots are contested: if an opponent could take your target spot, prioritise it (especially 6/8/5/9 tiles and new resource types you lack).
+- Buy dev cards only when no settlement/road progress is possible this turn or you have real surplus. Knights reposition the robber and chase Largest Army.
+- Cities are strong (double output, 2 VP total) once you have no good open spots or ore+wheat to spare.
 - Robber: place on the highest-pip tile of whoever is closest to winning or is starving you; rob the leader or the largest hand. Don't pick a fight you can't afford.
 - Trades: never give a resource that lets someone hit 8+ VP or complete Largest Army / Longest Road. Trade true surplus for what unblocks your next build. Prefer bank/port trades over feeding an opponent when anyone is close to winning.
 - Keep your hand at 7 or fewer once 7s are live, unless you can spend down this turn.
@@ -1922,6 +1926,9 @@ function claudeStateView(){
     yourHiddenVP: cl.vpCards,
     yourPorts: game.board.ports.filter(p=>p.verts.some(v=>[...cl.settlements,...cl.cities].includes(v))).map(p=>p.type),
     yourProduction: prodByRes(cl.id),
+    settlementsLeftToBuild: 5-cl.settlements.length,
+    missingForSettlement: Object.fromEntries(RES.map(r=>[r,Math.max(0,(COST.settlement[r]||0)-cl.hand[r])]).filter(x=>x[1]>0)),
+    settlementPlan: settlementPlan(cl),   // best open spots, nearest first; roadsNeeded = roads still to build before you can settle there
     players: game.players.map(p=>({
       name:p.name, isYou:p.isClaude, publicVP:publicVP(p),
       resourceCards:p.cardCount, devCards:p.devCount, knightsPlayed:p.knightsPlayed,
@@ -1936,6 +1943,28 @@ function spotStatus(v){
   if(b[v]) return `OCCUPIED by ${playerById(b[v].pid).name} (${b[v].kind}) — not a settlement spot`;
   if(g.verts[v].adj.some(n=>b[n])) return "blocked: too close to a building — cannot be settled";
   return "open (settleable)";
+}
+/* open settlement spots for Claude, with how many more roads each needs (0-1 BFS over its road network) */
+function settlementPlan(cl){
+  const g=game.board.geom, b=allBuildings();
+  const open=new Set(legalSettlementVertices(cl.id,{setup:true}));
+  const dist={}, dq=[];
+  const relax=(v,d)=>{ if(dist[v]==null || d<dist[v]){ dist[v]=d; dq.push(v); } };
+  for(const k in b) if(b[k].pid===cl.id) relax(k,0);
+  for(const ek of cl.roads) for(const v of g.edges[ek].v) relax(v,0);
+  while(dq.length){
+    dq.sort((x,y)=>dist[y]-dist[x]);       // pop smallest distance (graph is tiny)
+    const v=dq.pop();
+    if(b[v] && b[v].pid!==cl.id) continue;  // can't build through an opponent's building
+    for(const ek of g.verts[v].adjEdges){
+      const owner=occupiedEdge(ek); if(owner && owner!==cl.id) continue;
+      const e=g.edges[ek], w=e.v[0]===v? e.v[1]:e.v[0];
+      relax(w, dist[v] + (owner===cl.id?0:1));
+    }
+  }
+  const pipSum=k=>g.verts[k].hexes.reduce((a,id)=>{ const h=game.board.hexes[id-1]; return a+(h.resource==="desert"?0:pips(h.token)); },0);
+  return [...open].filter(k=>dist[k]!=null && dist[k]<=3).map(k=>({at:vDesc(k), pips:pipSum(k), roadsNeeded:dist[k]}))
+    .sort((a,b2)=>(b2.pips-2.5*b2.roadsNeeded)-(a.pips-2.5*a.roadsNeeded)).slice(0,6);   // value vs. distance
 }
 function legalMenu(){
   const cl=game.players.find(p=>p.isClaude);
