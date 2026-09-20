@@ -600,12 +600,12 @@ function updateUndoButton(){
 }
 const NO_SNAP = new Set(["new","dismiss-import","reveal-deck","cancel-claude","claude-setup","claude-turn","claude-resume","claude-end",
   "sub","sub-cancel","pick-setup-settlement","pick-setup-road","pick-robber","reveal-steal","mono-adj","tc-send",
-  "accept-offer","decline-offer","offers-done","claude-took","cancel"]);
+  "offers-done","claude-took","cancel"]);
 const SNAP_LABEL = {build:a=>"build a "+a, "buy-dev":()=>"buy dev card", "apply-roll":()=>"dice roll", "end-turn":()=>"end turn",
   "play-dev":a=>"play "+a, "do-bank":()=>"bank trade", "do-th":()=>"player trade", "tc-apply":()=>"trade with Claude",
   cadj:()=>"card count change", "do-yop":()=>"Year of Plenty", "do-mono":()=>"Monopoly", "mono-apply":()=>"Monopoly collection",
   "set-starter":()=>"choice of who places first", "set-first":()=>"choice of who plays first", "pick-road-free":()=>"free road",
-  "ack-discard":()=>"discard", steal:()=>"steal", "robber-to-move":()=>"discards done", "robber-done":()=>"robber finished"};
+  "ack-discard":()=>"discard", "accept-offer":()=>"accepting Claude's trade", "decline-offer":()=>"declining Claude's trade", steal:()=>"steal", "robber-to-move":()=>"discards done", "robber-done":()=>"robber finished"};
 
 /* ---- commit: mutate → persist → render ---- */
 function commit(){ save(); render(); }
