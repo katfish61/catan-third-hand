@@ -600,12 +600,12 @@ function updateUndoButton(){
 }
 const NO_SNAP = new Set(["new","dismiss-import","reveal-deck","cancel-claude","claude-setup","claude-turn","claude-resume","claude-end",
   "sub","sub-cancel","pick-setup-settlement","pick-setup-road","pick-robber","reveal-steal","mono-adj","tc-send",
-  "offers-done","claude-took","cancel","ask-offer","ask-cancel"]);
+  "offers-done","cancel","ask-offer","ask-cancel"]);
 const SNAP_LABEL = {build:a=>"build a "+a, "buy-dev":()=>"buy dev card", "apply-roll":()=>"dice roll", "end-turn":()=>"end turn",
   "play-dev":a=>"play "+a, "do-bank":()=>"bank trade", "do-th":()=>"player trade", "tc-apply":()=>"trade with Claude",
   cadj:()=>"card count change", "do-yop":()=>"Year of Plenty", "do-mono":()=>"Monopoly", "mono-apply":()=>"Monopoly collection",
   "set-starter":()=>"choice of who places first", "set-first":()=>"choice of who plays first", "pick-road-free":()=>"free road",
-  "ack-discard":()=>"discard", "accept-offer":()=>"accepting Claude's trade", "decline-offer":()=>"declining Claude's trade", steal:()=>"steal", "robber-to-move":()=>"discards done", "robber-done":()=>"robber finished"};
+  "ack-discard":()=>"discard", "accept-offer":()=>"accepting Claude's trade", "claude-took":()=>"Claude's stolen card", "decline-offer":()=>"declining Claude's trade", steal:()=>"steal", "robber-to-move":()=>"discards done", "robber-done":()=>"robber finished"};
 
 /* ---- commit: mutate → persist → render ---- */
 function commit(){ save(); render(); }
@@ -1237,7 +1237,13 @@ function renderRobber(){
     const p=playerById(pd.revealTo);
     if(pd.claudeRobbedHuman){
       return `<h3 style="font-size:13px;margin-bottom:6px">Claude robbed ${esc(playerById(pd.victim).name)}</h3>
-        <p class="hint">${esc(playerById(pd.victim).name)}: tap the resource Claude took (others, look away). It enters Claude's hidden hand.</p>
+        <p class="hint">The app only knows how many cards ${esc(playerById(pd.victim).name)} holds, not which, so <b>the draw happens at the table</b>:</p>
+        <ol class="hint" style="margin:0 0 8px 18px;padding:0">
+          <li>${esc(playerById(pd.victim).name)} shuffles their hand face-down and fans it out.</li>
+          <li>Someone else draws <b>one card at random</b> without looking and passes it face-down to ${esc(playerById(pd.victim).name)}.</li>
+          <li>${esc(playerById(pd.victim).name)} looks at it (everyone else look away), taps its type below, and returns the card to the bank. It goes into Claude's hidden hand.</li>
+        </ol>
+        <p class="hint">The buttons list every resource because the app can't check the hand — tap only the card actually drawn. A wrong tap can be undone.</p>
         <div class="actions-grid">${RES.map(r=>`<button class="btn" data-act="claude-took:${r}">${RES_META[r].label}</button>`).join("")}</div>`;
     }
     return `<h3 style="font-size:13px;margin-bottom:6px">${esc(p.name)} stole from Claude</h3>
