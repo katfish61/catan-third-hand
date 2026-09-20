@@ -950,7 +950,7 @@ function renderStatus(){
     </div>`;
   }
   if(game.pickPlayFirst) return `<div class="statusbar"><span class="pill">Ready</span><span class="phase-note">Choose who plays first</span></div>`;
-  return `<div class="statusbar">
+  return renderTake() + `<div class="statusbar">
     <span class="pill turn" style="background:${c.color}">${esc(c.name)}${c.isClaude?" · Claude":""}</span>
     <span class="pill">Turn ${game.turn}</span>
     <span class="pill">Round ${game.round}</span>
@@ -959,6 +959,13 @@ function renderStatus(){
   </div>`;
 }
 
+function renderTake(){
+  const lr=game.lastRoll; if(!lr || !lr.take) return "";
+  const who=lr.take.filter(t=>t.parts);
+  return `<div class="banner" style="margin:0 0 10px;align-items:flex-start"><span>🎲 <b>${lr.n}</b> (${esc(lr.who)}) — take from the bank: ${
+    who.length? who.map(t=>`<b style="color:${t.color}">${esc(t.name)}</b> ${esc(t.parts)}`).join(" · ") : "no cards for the humans"
+  }.</span></div>`;
+}
 function renderScore(){
   const rows=game.players.map(p=>{
     const badges=[];
@@ -1599,10 +1606,14 @@ function resolveRoll(n, isClaude){
     return "reroll";
   }
   game.pendingRoll=n;
+  game.lastRoll={ n, who:cur().name, take:null };
   game.players.forEach(p=>p.playedDevThisTurn=p.playedDevThisTurn||false);
   logLine(`${cur().name} rolled ${n}.`, isClaude?"claude":"");
   if(n===7){ startRobber(cur().id); return; }
   const gain=applyProduction(n);
+  game.lastRoll={ n, who:cur().name, take:game.players.filter(p=>!p.isClaude).map(p=>({
+    name:p.name, color:p.color,
+    parts:RES.filter(r=>gain[p.id][r]).map(r=>`${gain[p.id][r]} ${RES_META[r].label.toLowerCase()}`).join(", ") })) };
   logLine("Production — "+gainSummary(gain), isClaude?"claude":"");
   commit();
 }
