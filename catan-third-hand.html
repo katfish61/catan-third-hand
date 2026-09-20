@@ -794,6 +794,7 @@ function render(){
   root.dataset.ok="1";
   if(!game){ root.innerHTML="<p>Loading…</p>"; return; }
   if(game.phase==="config"){ root.innerHTML=renderConfig(); wireConfig(); updateUndoButton(); return; }
+  refreshDiscards();
   root.innerHTML = `
     ${ui.importErr? `<div class="banner warn">${esc(ui.importErr)} <button class="btn sm ghost" data-act="dismiss-import">Dismiss</button></div>`:""}
     ${game.isExample? `<div class="banner">Example game in progress — the numbers below are a sample. Press <b>&nbsp;New game&nbsp;</b> to start your own.</div>`:""}
@@ -1625,6 +1626,20 @@ function startRobber(moverId){
   }
   game.pending={type:"robber", mover:moverId, discards, step: discards.some(d=>!d.done)?"discard":"move"};
   commit();
+}
+/* card counts can be corrected (−/+) while discards are pending — keep the prompt in step with them */
+function refreshDiscards(){
+  const pd=game.pending;
+  if(!pd || pd.type!=="robber" || pd.step!=="discard") return;
+  let changed=false;
+  for(const x of pd.discards){
+    if(x.done) continue;
+    const p=playerById(x.pid); if(p.isClaude) continue;
+    if(p.cardCount<=7){ x.done=true; changed=true; logLine(`${p.name} has ${p.cardCount} cards — no discard needed.`); }
+    else{ const n=Math.floor(p.cardCount/2); if(n!==x.n){ x.n=n; changed=true; } }
+  }
+  if(pd.discards.every(d=>d.done)){ pd.step="move"; changed=true; }
+  if(changed) save();
 }
 function maybeRobberAdvance(){
   if(game.pending.discards.every(d=>d.done)) game.pending.step="move";
