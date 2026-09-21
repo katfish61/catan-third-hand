@@ -834,20 +834,20 @@ function render(){
           <div class="bd" id="p-score">${renderScore()}</div>
         </div>
         <div class="card">
-          <div class="hd"><h2>Claude · sealed hand</h2><span class="phase-note">🔒 hidden</span></div>
-          <div class="bd" id="p-hand">${renderClaudeHand()}</div>
-        </div>
-        <div class="card">
           <div class="hd"><h2>${game.phase==="setup"?"Setup":game.phase==="over"?"Game over":"This turn"}</h2></div>
           <div class="bd" id="p-action">${renderAction()}</div>
         </div>
         <div class="card">
-          <div class="hd"><h2>Fairness</h2></div>
-          <div class="bd fair" id="p-fair">${renderFairnessInner()}</div>
-        </div>
-        <div class="card">
           <div class="hd"><h2>Game log</h2></div>
           <div class="bd"><div class="log" id="p-log">${renderLog()}</div></div>
+        </div>
+        <div class="card">
+          <div class="hd"><h2>Claude · sealed hand</h2><span class="phase-note">🔒 hidden</span></div>
+          <div class="bd" id="p-hand">${renderClaudeHand()}</div>
+        </div>
+        <div class="card">
+          <div class="hd"><h2>Fairness</h2></div>
+          <div class="bd fair" id="p-fair">${renderFairnessInner()}</div>
         </div>
       </div>
     </div>`;
