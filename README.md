@@ -54,3 +54,20 @@ Open it **from claude.ai** (not a saved copy) so Claude can make its moves — i
 - If Claude's turn stalls ("its turn is paused"), it's almost always rate-limiting from
   actions firing back-to-back. "Resume Claude's turn" retries without re-rolling;
   "End Claude's turn" hands off.
+
+
+## Built-in bot & standalone app
+
+- **Who plays the third seat** (header button "Opponent"): *auto* = Claude when the `sample` capability is
+  available (inside claude.ai), otherwise the built-in bot; *bot* = always the bot; *claude* = Claude, falling
+  back to the bot if a request fails, so a turn can no longer stall on rate limits.
+- The bot (`BUILT-IN BOT` section of `catan-third-hand.html`) is a rules-based player: setup placement with
+  look-ahead, settlement/city/road/dev priorities (expansion first), road paths toward open spots, bank/port
+  trades toward its next goal, trades with the humans, robber and knight choices, smart discards.
+- **Standalone / installable app:** `python3 build_standalone.py` writes `docs/` (index.html, manifest,
+  service worker, icons). Serve `docs/` over https (e.g. GitHub Pages from `/docs`) and use
+  *Share → Add to Home Screen* on iPhone/iPad, or Safari *File → Add to Dock* on a Mac. It works offline after
+  the first load and needs no account, key or subscription.
+- Local try-out: `cd docs && python3 -m http.server 8000`.
+- Headless self-play test: see `tools/sim.js` (needs `npm i jsdom`); plays full games against simple
+  human-like players and reports win rate, stalls and errors.
