@@ -830,16 +830,16 @@ function render(){
       <div class="panel-col">
         <div class="card"><div class="bd" id="p-status">${renderStatus()}</div></div>
         <div class="card">
-          <div class="hd"><h2>Scoreboard</h2><span class="phase-note">first to 10 wins</span></div>
-          <div class="bd" id="p-score">${renderScore()}</div>
-        </div>
-        <div class="card">
           <div class="hd"><h2>${game.phase==="setup"?"Setup":game.phase==="over"?"Game over":"This turn"}</h2></div>
           <div class="bd" id="p-action">${renderAction()}</div>
         </div>
         <div class="card">
           <div class="hd"><h2>Game log</h2></div>
           <div class="bd"><div class="log" id="p-log">${renderLog()}</div></div>
+        </div>
+        <div class="card">
+          <div class="hd"><h2>Scoreboard</h2><span class="phase-note">first to 10 wins</span></div>
+          <div class="bd" id="p-score">${renderScore()}</div>
         </div>
         <div class="card">
           <div class="hd"><h2>Claude · sealed hand</h2><span class="phase-note">🔒 hidden</span></div>
