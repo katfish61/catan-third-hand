@@ -130,6 +130,11 @@
   .actions-grid .btn{width:100%; justify-content:center; text-align:center}
   .hint{font-size:12px; color:var(--muted); margin:2px 0 10px}
 
+  .dice-row{display:flex; flex-wrap:wrap; gap:6px}
+  .dice-btn{width:38px; height:38px; border:1px solid var(--line-strong); background:var(--panel); color:var(--ink);
+    border-radius:8px; font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:15px; cursor:pointer}
+  .dice-btn:hover{background:var(--panel-2)}
+  .dice-btn.hot{border-color:var(--crit); color:var(--crit)}
   .res-steppers{display:grid; grid-template-columns:repeat(5,1fr); gap:6px}
   .stepper{border:1px solid var(--line); border-radius:8px; padding:6px 4px; text-align:center}
   .stepper .rname{font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted)}
@@ -154,6 +159,16 @@
   .log .e.rng{color:var(--warn)}
   .log .e.big{font-weight:600}
 
+  .ticker{overflow:hidden; white-space:nowrap; border-radius:8px; background:var(--accent-soft); color:var(--accent);
+    font-size:12.5px; font-weight:500; padding:7px 0; margin:0 0 10px; border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+  .ticker-track{display:inline-flex}
+  .ticker-track span{padding-left:1em}
+  @media (prefers-reduced-motion:no-preference){
+    .ticker-track{animation:ticker-scroll 18s linear infinite}
+    .ticker:hover .ticker-track,.ticker:active .ticker-track{animation-play-state:paused}
+    @keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  }
+  @media (prefers-reduced-motion:reduce){ .ticker{overflow-x:auto; -webkit-overflow-scrolling:touch} }
   .fair .h{font-family:"IBM Plex Mono",monospace; font-size:11px; word-break:break-all; color:var(--muted); background:var(--panel-2); padding:8px; border-radius:7px; border:1px solid var(--line)}
   .fair .stat{display:flex; justify-content:space-between; font-size:12px; margin-top:8px}
 
@@ -620,7 +635,7 @@ function updateUndoButton(){
 const NO_SNAP = new Set(["new","dismiss-import","reveal-deck","cancel-claude","claude-setup","claude-turn","claude-resume","claude-end",
   "sub","sub-cancel","pick-setup-settlement","pick-setup-road","pick-robber","reveal-steal","mono-adj","tc-send",
   "offers-done","cancel","ask-offer","ask-cancel"]);
-const SNAP_LABEL = {build:a=>"build a "+a, "buy-dev":()=>"buy dev card", "apply-roll":()=>"dice roll", "end-turn":()=>"end turn",
+const SNAP_LABEL = {build:a=>"build a "+a, "buy-dev":()=>"buy dev card", "pick-roll":()=>"dice roll", "end-turn":()=>"end turn",
   "play-dev":a=>"play "+a, "do-bank":()=>"bank trade", "do-th":()=>"player trade", "tc-apply":()=>"trade with Claude",
   cadj:()=>"card count change", "do-yop":()=>"Year of Plenty", "do-mono":()=>"Monopoly", "mono-apply":()=>"Monopoly collection",
   "set-starter":()=>"choice of who places first", "set-first":()=>"choice of who plays first", "pick-road-free":()=>"free road",
@@ -983,9 +998,10 @@ function renderStatus(){
 function renderTake(){
   const lr=game.lastRoll; if(!lr || !lr.take) return "";
   const who=lr.take.filter(t=>t.parts);
-  return `<div class="banner" style="margin:0 0 10px;align-items:flex-start"><span>🎲 <b>${lr.n}</b> (${esc(lr.who)}) — take from the bank: ${
+  const unit = `🎲 ${lr.n} (${esc(lr.who)}) — take from the bank: ${
     who.length? who.map(t=>`<b style="color:${t.color}">${esc(t.name)}</b> ${esc(t.parts)}`).join(" · ") : "no cards for the humans"
-  }.</span></div>`;
+  }.\u00A0\u00A0\u00A0\u00A0•\u00A0\u00A0\u00A0\u00A0`;
+  return `<div class="ticker"><div class="ticker-track"><span>${unit}</span><span>${unit}</span></div></div>`;
 }
 function renderScore(){
   const rows=game.players.map(p=>{
@@ -1085,11 +1101,7 @@ function renderAction(){
   if(game.pendingRoll==null && ui.sub) return renderHumanMenu();   // dev-card sub-panels work before the roll too
   if(game.pendingRoll==null){
     return `<div class="field"><label>Dice roll for ${esc(c.name)}</label>
-      <div class="inline">
-        <select id="roll-val">${Array.from({length:11},(_,i)=>i+2).map(n=>`<option value="${n}" ${n===8?"selected":""}>${n}</option>`).join("")}</select>
-        <button class="btn primary" data-act="apply-roll">Apply roll</button>
-      </div></div>
-      <p class="hint">Enter the total of the two dice. A 7 ${game.round<=game.config.protectRounds?"means roll again this round (house rule).":"triggers discards + the robber."}</p>
+      <div class="dice-row">${Array.from({length:11},(_,i)=>i+2).map(n=>`<button class="dice-btn${n===6||n===8?" hot":""}" data-act="pick-roll:${n}">${n}</button>`).join("")}</div></div>
       <button class="btn" data-act="sub:dev" ${c.devCount>0?"":"disabled"}>Play a dev card before rolling (e.g. Knight)</button>`;
   }
   return renderHumanMenu();
@@ -1519,7 +1531,7 @@ function onAppClick(e){
     }
 
     /* roll */
-    case "apply-roll": { const n=+$("#roll-val").value; resolveRoll(n,false); break; }
+    case "pick-roll": { resolveRoll(+a1,false); break; }
     case "claude-turn": runClaudeTurn(); break;
     case "claude-resume": resumeClaudeTurn(); break;
     case "claude-end": if(cur().isClaude && !ui.busy) endTurn(); break;
