@@ -271,7 +271,7 @@ function spiralOrder(startId, dir){
 const STRATEGY_PRIMER = `You are playing 3-player BASE Catan (no expansions) to 10 victory points. Play to win; do not kingmake.
 - Opening: maximize total pip count and resource diversity across your two settlements. Prioritize 6/8 tiles and covering wood+brick+wheat+sheep (expansion) or ore+wheat (city/dev engine). Take a 2:1 port only if you already produce that resource well.
 - EXPANSION WINS 3-player games. Every settlement is +1 VP AND a new production source, and it takes a spot an opponent wants. With an open spot available, a settlement is almost always better than a dev card, a city, or holding cards. You have 5 settlements — fill them; upgrade to cities once spots run out or you're stuck.
-- Build roads with a purpose: toward the best open spot in settlementPlan. A spot with roadsNeeded 1 means "build the road now, settle next turn"; roadsNeeded 0 means settle as soon as you can pay. Do not wander, and never build toward an occupied/blocked corner.
+- Build roads with a purpose: aimed at the best open spot in settlementPlan. A spot with roadsNeeded 1 means "build the road now, settle next turn"; roadsNeeded 0 means settle as soon as you can pay. Do not wander, and never build into an occupied/blocked corner.
 - If you are 1-2 cards short of a settlement (see missingForSettlement), close the gap THIS turn: bank/port trade or propose a trade. Do not spend those cards elsewhere.
 - Spots are contested: if an opponent could take your target spot, prioritise it (especially 6/8/5/9 tiles and new resource types you lack).
 - Buy dev cards only when no settlement/road progress is possible this turn or you have real surplus. Knights reposition the robber and chase Largest Army.
@@ -2030,7 +2030,7 @@ Each ACTION is exactly one of:
 {"type":"monopoly","resource":"ore"}
 {"type":"roadBuilding","roads":["<edge key>","<edge key>"]}
 {"type":"proposeTrade","give":{"wood":1},"get":{"ore":1},"toPlayerName":"<name or any>","reason":"short"}
-Roads: each road edge lists its two ends (the "ends" field) with a status. Only treat an end as a settlement spot if its status is "open (settleable)" — never call an OCCUPIED or blocked corner a settlement spot. Build a road toward an open end (or deliberately for Longest Road / to cut an opponent off, and say so).
+Roads: each road edge lists its two ends (the "ends" field) with a status. Only treat an end as a settlement spot if its status is "open (settleable)" — never call an OCCUPIED or blocked corner a settlement spot. Build a road that reaches an open end (or deliberately for Longest Road / to cut an opponent off, and say so). Vary your wording in "reason" — do not default to "toward" every time.
 Rules: I execute actions in order and re-check legality; skip means skipped. Buy/build only what you can pay for in sequence. Do not include a Knight action here (knights are handled before the roll). Keep it to the strongest 1-4 actions. If nothing is worth doing, return {"actions":[],"endReason":"..."}.`;
 }
 function preRollKnightPrompt(){
@@ -2137,7 +2137,7 @@ function botSetupDecision(pid){
     let sc=0; for(const w of g.verts[n].adj){ if(w!==k && open.has(w)) sc=Math.max(sc,botVertexValue(w,p)); }
     if(!bestE || sc>bestE.sc) bestE={ek,sc};
   }
-  return {vertex:k, road:bestE.ek, reason:`${vDesc(k)} — best pips and variety, road toward the next good spot`};
+  return {vertex:k, road:bestE.ek, reason:`${vDesc(k)} — best pips and variety, road aimed at the next good spot`};
 }
 
 /* ---- robber ---- */
@@ -2193,7 +2193,7 @@ function botGoals(cl){
     const target=spots.filter(x=>x.roadsNeeded>0).sort((a,b)=>(b.val-2.5*b.roadsNeeded)-(a.val-2.5*a.roadsNeeded))[0];
     // if a settlement is ready, only spend wood+brick on a road when there is a spare pair
     if(target && (!ready || (cl.hand.wood>=2 && cl.hand.brick>=2)))
-      goals.push({type:"road", edge:target.path[0], cost:COST.road, score:8+target.val*0.5-target.roadsNeeded*2, why:"road toward "+target.at});
+      goals.push({type:"road", edge:target.path[0], cost:COST.road, score:8+target.val*0.5-target.roadsNeeded*2, why:"road heading to "+target.at});
   }
   if(cl.cities.length<4 && cl.settlements.length){
     const sv=cl.settlements.slice().sort((a,b)=>vertexPips(b)-vertexPips(a))[0];
@@ -2218,7 +2218,7 @@ function botBankTradeFor(cl,goal){
     if(sur>=rates[s] && (!best || sur>best.sur)) best={s,sur};
   }
   if(!best) return null;
-  return {type:"bankTrade", give:{[best.s]:rates[best.s]}, get:{[miss[0]]:1}, _why:`trade toward ${goal.why}`};
+  return {type:"bankTrade", give:{[best.s]:rates[best.s]}, get:{[miss[0]]:1}, _why:`trade to set up ${goal.why}`};
 }
 function botNextAction(cl){
   const goals=botGoals(cl);
@@ -2226,7 +2226,7 @@ function botNextAction(cl){
   const main=goals.find(g=>g.type==="settlement"||g.type==="city");
   if(canPlay("plenty") && main){
     const miss=botMissing(main.cost,cl.hand), want=[]; RES.forEach(r=>{ for(let i=0;i<(miss[r]||0);i++) want.push(r); });
-    if(want.length>=1 && want.length<=2){ while(want.length<2) want.push(want[0]); return {type:"yearOfPlenty",take:want,_why:"Year of Plenty toward "+main.why}; }
+    if(want.length>=1 && want.length<=2){ while(want.length<2) want.push(want[0]); return {type:"yearOfPlenty",take:want,_why:"Year of Plenty to help "+main.why}; }
   }
   if(canPlay("mono")){
     const humans=game.players.filter(p=>!p.isClaude).reduce((a,p)=>a+p.cardCount,0);
@@ -2238,7 +2238,7 @@ function botNextAction(cl){
   }
   if(canPlay("road")){
     const t=planSpots(cl).filter(x=>x.roadsNeeded>0).sort((a,b)=>(b.val-2.5*b.roadsNeeded)-(a.val-2.5*a.roadsNeeded))[0];
-    if(t && t.path.length && cl.roads.length<=13) return {type:"roadBuilding",roads:t.path.slice(0,2),_why:"Road Building toward "+t.at};
+    if(t && t.path.length && cl.roads.length<=13) return {type:"roadBuilding",roads:t.path.slice(0,2),_why:"Road Building to reach "+t.at};
   }
   const settleGoal=goals.find(g=>g.type==="settlement");
   for(const g of goals){
@@ -2278,7 +2278,7 @@ function botMainPhase(){
       if(s) offers.push({give:cleanMap({[s]:1}), get:cleanMap({[ks[0]]:1}), to:"any", reason:"one card short of "+top.why});
     }
   }
-  return {offers, reason: reason? "Played toward "+reason+".": "Nothing worth doing this turn."};
+  return {offers, reason: reason? "Worked on "+reason+".": "Nothing worth doing this turn."};
 }
 function botTradeReply(offer){                    // offer.give = what the human gives me, offer.get = what they want from me
   const me=botMe();
