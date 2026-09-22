@@ -144,11 +144,22 @@
   .actions-grid .btn{width:100%; justify-content:center; text-align:center}
   .hint{font-size:12px; color:var(--muted); margin:2px 0 10px}
 
-  .dice-row{display:flex; flex-wrap:wrap; gap:6px}
-  .dice-btn{width:38px; height:38px; border:1px solid var(--line-strong); background:var(--panel); color:var(--ink);
-    border-radius:8px; font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:15px; cursor:pointer}
+  .dice-row{display:flex; flex-wrap:wrap; gap:7px}
+  .dice-btn{display:flex; flex-direction:column; align-items:center; gap:4px; min-width:48px;
+    border:1px solid var(--line-strong); background:var(--panel); color:var(--ink);
+    border-radius:10px; padding:6px 7px 5px; cursor:pointer}
   .dice-btn:hover{background:var(--panel-2)}
-  .dice-btn.hot{border-color:var(--crit); color:var(--crit)}
+  .dice-btn.hot{border-color:var(--crit)}
+  .dice-btn.hot b{color:var(--crit)}
+  .dice-btn b{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:13px; line-height:1}
+  .dice-pair{display:flex; gap:3px}
+  .die{display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+    width:19px; height:19px; padding:2.5px; box-sizing:border-box;
+    background:var(--token); border:1px solid var(--line-strong); border-radius:5px;
+    box-shadow:inset 0 1px 1px rgba(0,0,0,.08)}
+  .die i{border-radius:50%}
+  .die i.pip{background:var(--token-ink)}
+  @media (pointer:coarse){ .die{width:22px; height:22px} .dice-btn{padding:8px 9px 6px} }
   .res-steppers{display:grid; grid-template-columns:repeat(5,1fr); gap:6px}
   .stepper{border:1px solid var(--line); border-radius:8px; padding:6px 4px; text-align:center}
   .stepper .rname{font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted)}
@@ -313,6 +324,11 @@ const STRATEGY_PRIMER = `You are playing 3-player BASE Catan (no expansions) to 
 - Prefer concrete progress (a settlement, a city, LR/LA) over hoarding cards.`;
 
 /* ---------------- tiny helpers ---------------- */
+const DIE_PIPS = {   // 3x3 grid, row-major: TL TM TR ML C MR BL BM BR
+  1:[0,0,0, 0,1,0, 0,0,0], 2:[1,0,0, 0,0,0, 0,0,1], 3:[1,0,0, 0,1,0, 0,0,1],
+  4:[1,0,1, 0,0,0, 1,0,1], 5:[1,0,1, 0,1,0, 1,0,1], 6:[1,0,1, 1,0,1, 1,0,1],
+};
+const dieFace = n => `<span class="die">${DIE_PIPS[n].map(p=>`<i class="${p?"pip":""}"></i>`).join("")}</span>`;
 const $ = (s,el=document)=>el.querySelector(s);
 const $$ = (s,el=document)=>[...el.querySelectorAll(s)];
 const el = (tag,attrs={},kids=[])=>{
@@ -1115,7 +1131,11 @@ function renderAction(){
   if(game.pendingRoll==null && ui.sub) return renderHumanMenu();   // dev-card sub-panels work before the roll too
   if(game.pendingRoll==null){
     return `<div class="field"><label>Dice roll for ${esc(c.name)}</label>
-      <div class="dice-row">${Array.from({length:11},(_,i)=>i+2).map(n=>`<button class="dice-btn${n===6||n===8?" hot":""}" data-act="pick-roll:${n}">${n}</button>`).join("")}</div></div>
+      <div class="dice-row">${Array.from({length:11},(_,i)=>i+2).map(n=>{
+        const d1=Math.floor(n/2), d2=Math.ceil(n/2);
+        return `<button class="dice-btn${n===6||n===8?" hot":""}" data-act="pick-roll:${n}" aria-label="Roll totalling ${n}">
+          <span class="dice-pair">${dieFace(d1)}${dieFace(d2)}</span><b>${n}</b></button>`;
+      }).join("")}</div></div>
       <button class="btn" data-act="sub:dev" ${c.devCount>0?"":"disabled"}>Play a dev card before rolling (e.g. Knight)</button>`;
   }
   return renderHumanMenu();
