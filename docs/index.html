@@ -178,7 +178,7 @@
   .ticker-track{display:inline-flex}
   .ticker-track span{padding-left:1em}
   @media (prefers-reduced-motion:no-preference){
-    .ticker-track{animation:ticker-scroll 18s linear infinite}
+    .ticker-track{animation:ticker-scroll 12s linear infinite}
     .ticker:hover .ticker-track,.ticker:active .ticker-track{animation-play-state:paused}
     @keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
   }
@@ -884,7 +884,7 @@ function render(){
   wireBoard();
   wirePanels();
   updateUndoButton(); updateBrainButton();
-  const lg=$("#p-log"); if(lg) lg.scrollTop=lg.scrollHeight;
+  const lg=$("#p-log"); if(lg) lg.scrollTop=0;   // newest entries are now at the top
   if(!ui.busy) setTimeout(robberAutopilot,0);
 }
 
@@ -1060,7 +1060,7 @@ function renderFairnessInner(){
 function renderFairness(){ const n=$("#p-fair"); if(n) n.innerHTML=renderFairnessInner(); }
 
 function renderLog(){
-  return game.log.slice(-140).map(e=>`<div class="e ${e.cls||""}"><span class="t">${e.ts}</span><span>${esc(e.text)}</span></div>`).join("");
+  return game.log.slice(-140).reverse().map(e=>`<div class="e ${e.cls||""}"><span class="t">${e.ts}</span><span>${esc(e.text)}</span></div>`).join("");   // newest first
 }
 
 /* ---------------- steppers ---------------- */
