@@ -831,6 +831,7 @@ function render(){
   refreshDiscards();
   root.innerHTML = `
     ${ui.importErr? `<div class="banner warn">${esc(ui.importErr)} <button class="btn sm ghost" data-act="dismiss-import">Dismiss</button></div>`:""}
+    ${(!game.isExample && !ui.dismissBotBanner && useBot())? `<div class="banner">🤖 ${game.players.find(p=>p.isClaude).name} is played by the built-in bot here, not real Claude — that only happens when this page is opened from claude.ai. <button class="btn sm ghost" data-act="dismiss-bot-banner">Got it</button></div>`:""}
     ${game.isExample? `<div class="banner">Example game in progress — the numbers below are a sample. Press <b>&nbsp;New game&nbsp;</b> to start your own.</div>`:""}
     
     ${helpBlock()}
@@ -856,7 +857,7 @@ function render(){
           <div class="bd" id="p-score">${renderScore()}</div>
         </div>
         <div class="card">
-          <div class="hd"><h2>Claude · sealed hand</h2><span class="phase-note">🔒 hidden</span></div>
+          <div class="hd"><h2>${useBot()?"Bot":"Claude"} · sealed hand</h2><span class="phase-note">🔒 hidden</span></div>
           <div class="bd" id="p-hand">${renderClaudeHand()}</div>
         </div>
         <div class="card">
@@ -985,7 +986,7 @@ function renderStatus(){
   }
   if(game.pickPlayFirst) return `<div class="statusbar"><span class="pill">Ready</span><span class="phase-note">Choose who plays first</span></div>`;
   return renderTake() + `<div class="statusbar">
-    <span class="pill turn" style="background:${c.color}">${esc(c.name)}${c.isClaude?" · Claude":""}</span>
+    <span class="pill turn" style="background:${c.color}">${esc(c.name)}${c.isClaude?seatTag():""}</span>
     <span class="pill">Turn ${game.turn}</span>
     <span class="pill">Round ${game.round}</span>
     ${game.round<=game.config.protectRounds? `<span class="pill" style="border-color:var(--warn);color:var(--warn)">7s off</span>`:""}
@@ -1086,12 +1087,12 @@ function renderAction(){
 
   if(c.isClaude){
     if(game.pendingRoll!=null){
-      return `<p class="hint">Claude already rolled <b>${game.pendingRoll}</b> this turn; its turn is paused (a request didn't finish).</p>
+      return `<p class="hint">${seatLabel()} already rolled <b>${game.pendingRoll}</b> this turn; its turn is paused (a request didn't finish).</p>
         <button class="btn primary" data-act="claude-resume">Resume Claude's turn</button>
         <button class="btn ghost" data-act="claude-end">End Claude's turn</button>`;
     }
-    return `<p class="hint">It's Claude's turn.</p>
-      <button class="btn primary" data-act="claude-turn">Play Claude's turn</button>
+    return `<p class="hint">It's ${game.players.find(p=>p.isClaude).name}'s turn — played by ${seatLabel()}.</p>
+      <button class="btn primary" data-act="claude-turn">Play ${seatLabel()}'s turn</button>
 `;
   }
   // human turn
@@ -1119,8 +1120,8 @@ function renderSetupAction(){
   }
   const pid=game.setup.order[game.setup.step], sp=playerById(pid);
   if(sp.isClaude){
-    return `<p class="hint">Claude places its ${game.setup.step<3?"first":"second"} settlement and road.</p>
-      <button class="btn primary" data-act="claude-setup">Let Claude place</button>
+    return `<p class="hint">${seatLabel()} places its ${game.setup.step<3?"first":"second"} settlement and road.</p>
+      <button class="btn primary" data-act="claude-setup">Let ${seatLabel()} place</button>
 `;
   }
   if(game.setup.phase==="settlement"){
@@ -1257,13 +1258,13 @@ function renderRobber(){
       ${remaining? `<p class="hint">Acknowledge each discard to continue.</p>`:`<button class="btn primary" data-act="robber-to-move">Continue to robber</button>`}`;
   }
   if(pd.step==="move"){
-    if(playerById(pd.mover).isClaude) return `<p class="hint">Claude is choosing where to move the robber…</p>`;
+    if(playerById(pd.mover).isClaude) return `<p class="hint">${seatLabel()} is choosing where to move the robber…</p>`;
     return `<h3 style="font-size:13px;margin-bottom:6px">Move the robber</h3>
       <p class="hint">${esc(playerById(pd.mover).name)} clicks a highlighted hex.</p>
       <button class="btn" data-act="pick-robber">Highlight hexes</button>`;
   }
   if(pd.step==="steal"){
-    if(playerById(pd.mover).isClaude) return `<p class="hint">Claude is choosing whom to rob…</p>`;
+    if(playerById(pd.mover).isClaude) return `<p class="hint">${seatLabel()} is choosing whom to rob…</p>`;
     const cands=pd.stealCandidates.map(pid=>{
       const p=playerById(pid);
       return `<button class="btn" data-act="steal:${pid}">Steal from ${esc(p.name)} (${p.cardCount})</button>`;
@@ -1512,6 +1513,7 @@ function onAppClick(e){
   switch(act){
     case "new": startConfig(); break;
     case "dismiss-import": ui.importErr=null; render(); break;
+    case "dismiss-bot-banner": ui.dismissBotBanner=true; render(); break;
     case "reveal-deck": game.dev.revealed=true; renderFairness(); break;
     case "cancel-claude": ui.cancelClaude=true; if(ui._abort) ui._abort.abort(); break;
 
@@ -2106,6 +2108,8 @@ const BRAIN_KEY="catan-third-hand:brain";
 function brainPref(){ try{ return localStorage.getItem(BRAIN_KEY)||"auto"; }catch(e){ return "auto"; } }
 function setBrainPref(v){ try{ localStorage.setItem(BRAIN_KEY,v); }catch(e){} }
 function useBot(){ return brainPref()==="bot" || sampleFn===null; }
+function seatLabel(){ return useBot()? "the bot" : "Claude"; }        // who is actually deciding right now
+function seatTag(){ return useBot()? " · bot" : " · Claude"; }
 const RES_W={wood:1.05,brick:1.05,sheep:0.85,wheat:1.1,ore:1.0};
 const botMe=()=>game.players.find(p=>p.isClaude);
 const vertexPips=k=>game.board.geom.verts[k].hexes.reduce((a,id)=>{ const h=game.board.hexes[id-1]; return a+(h.resource==="desert"?0:pips(h.token)); },0);
